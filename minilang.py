@@ -27,26 +27,60 @@ class Scanner:
         else:
             return "$EOF"
 
-def interpret(source):
-    scanner = Scanner(source)
 
-    while (command := scanner.next_token()) != "$EOF":
-        assert command == "print", f"Expected `print`, found `{command}`."
+class Parser:
+    def __init__(self, source):
+        self.scanner = Scanner(source)
+        self._current_token = ""
+        self._next_token()
 
-        number = scanner.next_token()
-        assert isinstance(number, int), f"Expected number , found `{number}`."
+    def parse_program(self):
+        program: list = ["program"]
+        while self._current_token != "$EOF":
+            self._check_token("print")
+            number = self._next_token()
+            assert isinstance(number, int), f"Expected number , found `{number}`."
+            self._next_token()
+            self._consume_token(";")
+            program.append(["print", number])
+        return program
 
-        semicolon = scanner.next_token()
-        assert semicolon == ";", f"Expected semicolon, found `{semicolon}`."
+    def _consume_token(self, expected_token):
+        self._check_token(expected_token)
+        return self._next_token()
 
-        print(number)
+    def _check_token(self, expected_token):
+        assert self._current_token == expected_token, \
+               f"Expected `{expected_token}`, found `{self._current_token}`."
+
+    def _next_token(self):
+        self._current_token = self.scanner.next_token()
+        return self._current_token
+
+class Evaluator:
+    def eval_program(self, program):
+        match program:
+            case ["program", *statements]:
+                for statement in statements:
+                    self._eval_statement(statement)
+            case unexpected: assert False, f"Internal Error at `{unexpected}`."
+
+    def _eval_statement(self, statement):
+        match statement:
+            case ["print", val]: print(val)
+            case unexpected: assert False, f"Internal Error at `{unexpected}`."
 
 import sys
 
+evaluator = Evaluator()
 while True:
     print("Input source and enter Ctrl+D:")
     if (source := sys.stdin.read()) == "": break
 
     print("Output:")
-    try: interpret(source)
-    except AssertionError as e: print("Error: ", e)
+    try:
+        ast = Parser(source).parse_program()
+        print(ast)
+        evaluator.eval_program(ast)
+    except AssertionError as e:
+        print("Error:", e)
