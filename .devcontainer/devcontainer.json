@@ -1,0 +1,16 @@
+{
+	"name": "minilang-book",
+	"dockerComposeFile": "compose.yml",
+	"service": "minilang-book",
+	"workspaceFolder": "/workspaces/minilang-book",
+	"customizations": {
+		"vscode": {
+			"extensions": [
+				"ms-python.python",
+				"ms-python.vscode-pylance",
+				"donjayamanne.githistory"
+			]
+		}
+	},
+	"remoteUser": "vscode"
+}
