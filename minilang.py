@@ -1,34 +1,43 @@
+class Scanner:
+    def __init__(self, source) -> None:
+        self._source = source
+        self._current_position = 0
+
+    def next_token(self):
+        while self._current_char().isspace(): self._current_position += 1
+
+        start = self._current_position
+        match self._current_char():
+            case "$EOF": return "$EOF"
+            case c if c.isalpha():
+                while self._current_char().isalnum() or self._current_char() == "_":
+                    self._current_position += 1
+                return self._source[start:self._current_position]
+            case c if c.isnumeric():
+                while self._current_char().isnumeric():
+                    self._current_position += 1
+                return int(self._source[start:self._current_position])
+            case _:
+                self._current_position += 1
+                return self._source[start:self._current_position]
+
+    def _current_char(self):
+        if self._current_position < len(self._source):
+            return self._source[self._current_position]
+        else:
+            return "$EOF"
+
 def interpret(source):
-    current_position = 0
+    scanner = Scanner(source)
 
-    while current_position < len(source):
-        while current_position < len(source) and source[current_position].isspace():
-            current_position += 1
+    while (command := scanner.next_token()) != "$EOF":
+        assert command == "print", f"Expected `print`, found `{command}`."
 
-        start = current_position
-        while  current_position < len(source) and source[current_position].isalpha():
-            current_position += 1
-        command = source[start:current_position]
-        assert command == "print", f"Expected `print`."
+        number = scanner.next_token()
+        assert isinstance(number, int), f"Expected number , found `{number}`."
 
-        while current_position < len(source) and source[current_position].isspace():
-            current_position += 1
-
-        start = current_position
-        while  current_position < len(source) and source[current_position].isnumeric():
-            current_position += 1
-        assert source[start:current_position].isnumeric(), f"Expected number."
-        number = int(source[start:current_position])
-
-        while current_position < len(source) and source[current_position].isspace():
-            current_position += 1
-
-        start = current_position
-        if current_position < len(source): current_position += 1
-        assert source[start:current_position] == ";", f"Expected semicolon."
-
-        while current_position < len(source) and source[current_position].isspace():
-            current_position += 1
+        semicolon = scanner.next_token()
+        assert semicolon == ";", f"Expected semicolon, found `{semicolon}`."
 
         print(number)
 
