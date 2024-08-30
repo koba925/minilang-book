@@ -1,14 +1,38 @@
-import sys, re
-
 def interpret(source):
-    statement_pattern = re.compile(r"\s*print\s*(\d+)\s*;\s*")
-
     current_position = 0
+
     while current_position < len(source):
-        statement = statement_pattern.match(source, current_position)
-        assert statement is not None, "Does not match."
-        print(int(statement.group(1)))
-        current_position = statement.end()
+        while current_position < len(source) and source[current_position].isspace():
+            current_position += 1
+
+        start = current_position
+        while  current_position < len(source) and source[current_position].isalpha():
+            current_position += 1
+        command = source[start:current_position]
+        assert command == "print", f"Expected `print`."
+
+        while current_position < len(source) and source[current_position].isspace():
+            current_position += 1
+
+        start = current_position
+        while  current_position < len(source) and source[current_position].isnumeric():
+            current_position += 1
+        assert source[start:current_position].isnumeric(), f"Expected number."
+        number = int(source[start:current_position])
+
+        while current_position < len(source) and source[current_position].isspace():
+            current_position += 1
+
+        start = current_position
+        if current_position < len(source): current_position += 1
+        assert source[start:current_position] == ";", f"Expected semicolon."
+
+        while current_position < len(source) and source[current_position].isspace():
+            current_position += 1
+
+        print(number)
+
+import sys
 
 while True:
     print("Input source and enter Ctrl+D:")
