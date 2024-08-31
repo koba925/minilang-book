@@ -27,7 +27,6 @@ class Scanner:
         else:
             return "$EOF"
 
-
 class Parser:
     def __init__(self, source):
         self.scanner = Scanner(source)
@@ -58,7 +57,11 @@ class Parser:
         return self._current_token
 
 class Evaluator:
+    def __init__(self):
+        self.output = []
+
     def eval_program(self, program):
+        self.output = []
         match program:
             case ["program", *statements]:
                 for statement in statements:
@@ -67,20 +70,22 @@ class Evaluator:
 
     def _eval_statement(self, statement):
         match statement:
-            case ["print", val]: print(val)
+            case ["print", val]: self.output.append(val)
             case unexpected: assert False, f"Internal Error at `{unexpected}`."
 
-import sys
+if __name__ == "__main__":
+    import sys
 
-evaluator = Evaluator()
-while True:
-    print("Input source and enter Ctrl+D:")
-    if (source := sys.stdin.read()) == "": break
+    evaluator = Evaluator()
+    while True:
+        print("Input source and enter Ctrl+D:")
+        if (source := sys.stdin.read()) == "": break
 
-    print("Output:")
-    try:
-        ast = Parser(source).parse_program()
-        print(ast)
-        evaluator.eval_program(ast)
-    except AssertionError as e:
-        print("Error:", e)
+        print("Output:")
+        try:
+            ast = Parser(source).parse_program()
+            print(ast)
+            evaluator.eval_program(ast)
+            print(*evaluator.output, sep="\n")
+        except AssertionError as e:
+            print("Error:", e)
