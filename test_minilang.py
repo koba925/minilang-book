@@ -36,5 +36,14 @@ class TestMinilang(unittest.TestCase):
         self.assertEqual(get_error("print 5"), "Expected `;`, found `$EOF`.")
         self.assertEqual(get_error("print 5; prin 6;"), "Unexpected token `prin`.")
 
+    def test_add_sum(self):
+        self.assertEqual(get_output("print 5 + 6;"), [11])
+        self.assertEqual(get_ast("print 5 + 6 + 7;"), ["program", ["print", ["+", ["+", 5, 6], 7]]])
+        self.assertEqual(get_output("print 5 + 6 + 7;"), [18])
+
+        self.assertEqual(get_output("print 18 - 7;"), [11])
+        self.assertEqual(get_ast("print 18 - 7 - 6;"), ["program", ["print", ["-", ["-", 18, 7], 6]]])
+        self.assertEqual(get_output("print 18 - 7 - 6;"), [5])
+
 if __name__ == "__main__":
     unittest.main()
