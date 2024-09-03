@@ -53,19 +53,15 @@ class Parser:
     def _parse_expression(self):
         return self._parse_add_sub()
 
-    def _parse_add_sub(self):
-        add_sub = self._parse_mul_div()
-        while (op := self._current_token) in ("+", "-"):
-            self._next_token()
-            add_sub = [op, add_sub, self._parse_mul_div()]
-        return add_sub
+    def _parse_add_sub(self): return self._parse_binop_left(("+", "-"), self._parse_mult_div)
+    def _parse_mult_div(self): return self._parse_binop_left(("*", "/"), self._parse_primary)
 
-    def _parse_mul_div(self):
-        mul_div = self._parse_primary()
-        while (op := self._current_token) in ("*", "/"):
+    def _parse_binop_left(self, ops, sub_element):
+        result = sub_element()
+        while (op := self._current_token) in ops:
             self._next_token()
-            mul_div = [op, mul_div, self._parse_primary()]
-        return mul_div
+            result = [op, result, sub_element()]
+        return result
 
     def _parse_primary(self):
         match self._current_token:
