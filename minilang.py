@@ -65,6 +65,11 @@ class Parser:
 
     def _parse_primary(self):
         match self._current_token:
+            case "(":
+                self._next_token()
+                exp = self._parse_expression()
+                self._consume_token(")")
+                return exp
             case int(value):
                 self._next_token()
                 return value
