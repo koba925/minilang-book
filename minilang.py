@@ -54,7 +54,7 @@ class Parser:
         return self._parse_add_sub()
 
     def _parse_add_sub(self): return self._parse_binop_left(("+", "-"), self._parse_mult_div)
-    def _parse_mult_div(self): return self._parse_binop_left(("*", "/"), self._parse_primary)
+    def _parse_mult_div(self): return self._parse_binop_left(("*", "/"), self._parse_power)
 
     def _parse_binop_left(self, ops, sub_element):
         result = sub_element()
@@ -62,6 +62,12 @@ class Parser:
             self._next_token()
             result = [op, result, sub_element()]
         return result
+
+    def _parse_power(self):
+        power = self._parse_primary()
+        if self._current_token != "^": return power
+        self._next_token()
+        return ["^", power, self._parse_power()]
 
     def _parse_primary(self):
         match self._current_token:
@@ -110,6 +116,7 @@ class Evaluator:
     def _eval_expr(self, expr):
         match expr:
             case int(value): return value
+            case ["^", a, b]: return self._eval_expr(a) ** self._eval_expr(b)
             case ["*", a, b]: return self._eval_expr(a) * self._eval_expr(b)
             case ["/", a, b]: return self._div(self._eval_expr(a), self._eval_expr(b))
             case ["+", a, b]: return self._eval_expr(a) + self._eval_expr(b)

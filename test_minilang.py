@@ -61,5 +61,11 @@ class TestMinilang(unittest.TestCase):
         self.assertEqual(get_ast("print 5 * (6 + 7);"), ["program", ["print", ["*", 5, ["+", 6, 7]]]])
         self.assertEqual(get_output("print 5 * (6 + 7);"), [65])
 
+    def test_power(self):
+        self.assertEqual(get_output("print 2 ^ 3;"), [8])
+        self.assertEqual(get_ast("print 2 ^ 2 ^ 3;"), ["program", ["print", ["^", 2, ["^", 2, 3]]]])
+        self.assertEqual(get_output("print 2 ^ 2 ^ 3;"), [256])
+        self.assertEqual(get_output("print 5 * 2 ^ 3;"), [40])
+
 if __name__ == "__main__":
     unittest.main()
