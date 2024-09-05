@@ -12,7 +12,11 @@ class Scanner:
             case c if c.isalpha():
                 while self._current_char().isalnum() or self._current_char() == "_":
                     self._current_position += 1
-                return self._source[start:self._current_position]
+                token = self._source[start:self._current_position]
+                match token:
+                    case "true": return True
+                    case "false": return False
+                    case _: return token
             case c if c.isnumeric():
                 while self._current_char().isnumeric():
                     self._current_position += 1
@@ -76,7 +80,7 @@ class Parser:
                 exp = self._parse_expression()
                 self._consume_token(")")
                 return exp
-            case int(value):
+            case int(value) | bool(value):
                 self._next_token()
                 return value
             case unexpected: assert False, f"Unexpected token `{unexpected}`."
@@ -111,11 +115,16 @@ class Evaluator:
             case unexpected: assert False, f"Internal Error at `{unexpected}`."
 
     def _eval_print(self, expr):
-        self.output.append(self._eval_expr(expr))
+        self.output.append(self._to_print(self._eval_expr(expr)))
+
+    def _to_print(self, value):
+        match value:
+            case bool(b): return "true" if b else "false"
+            case _: return value
 
     def _eval_expr(self, expr):
         match expr:
-            case int(value): return value
+            case int(value) | bool(value): return value
             case ["^", a, b]: return self._eval_expr(a) ** self._eval_expr(b)
             case ["*", a, b]: return self._eval_expr(a) * self._eval_expr(b)
             case ["/", a, b]: return self._div(self._eval_expr(a), self._eval_expr(b))

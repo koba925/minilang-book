@@ -67,5 +67,8 @@ class TestMinilang(unittest.TestCase):
         self.assertEqual(get_output("print 2 ^ 2 ^ 3;"), [256])
         self.assertEqual(get_output("print 5 * 2 ^ 3;"), [40])
 
+    def test_boolean(self):
+        self.assertEqual(get_output("print true; print false;"), ["true", "false"])
+
 if __name__ == "__main__":
     unittest.main()
