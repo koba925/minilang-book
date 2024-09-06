@@ -70,5 +70,17 @@ class TestMinilang(unittest.TestCase):
     def test_boolean(self):
         self.assertEqual(get_output("print true; print false;"), ["true", "false"])
 
+    def test_equality(self):
+        self.assertEqual(get_output("print 5 + 7 = 3 * 4;"), ["true"])
+        self.assertEqual(get_output("print 5 + 6 = 3 * 4;"), ["false"])
+        self.assertEqual(get_output("print 5 + 7 # 3 * 4;"), ["false"])
+        self.assertEqual(get_output("print 5 + 6 # 3 * 4;"), ["true"])
+        self.assertEqual(get_output("print true = true;"), ["true"])
+        self.assertEqual(get_output("print true = false;"), ["false"])
+        self.assertEqual(get_output("print true # true;"), ["false"])
+        self.assertEqual(get_output("print true # false;"), ["true"])
+        self.assertEqual(get_ast("print 5 = 6 = true;"), ["program", ["print", ["=", ["=", 5, 6], True]]])
+        self.assertEqual(get_output("print 5 = 6 = true;"), ["false"])
+
 if __name__ == "__main__":
     unittest.main()
