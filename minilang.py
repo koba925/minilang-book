@@ -45,9 +45,18 @@ class Parser:
 
     def _parse_statement(self):
         match self._current_token:
+            case "{": return self._parse_block()
             case "var" | "set": return self._parse_var_set()
             case "print": return self._parse_print()
             case unexpected: assert False, f"Unexpected token `{unexpected}`."
+
+    def _parse_block(self):
+        block: list = ["block"]
+        self._next_token()
+        while self._current_token != "}":
+            block.append(self._parse_statement())
+        self._next_token()
+        return block
 
     def _parse_var_set(self):
         op = self._current_token
@@ -109,10 +118,10 @@ class Parser:
         self._current_token = self.scanner.next_token()
         return self._current_token
 
-
 class Environment:
-    def __init__(self):
+    def __init__(self, parent:"Environment | None"=None):
         self._values = {}
+        self._parent = parent
 
     def define(self, name, value):
         assert name not in self._values, f"`{name}` already defined."
@@ -120,10 +129,12 @@ class Environment:
 
     def assign(self, name, value):
         if name in self._values: self._values[name] = value
+        elif self._parent is not None: self._parent.assign(name, value)
         else: assert False, f"`{name}` not defined."
 
     def get(self, name):
         if name in self._values: return self._values[name]
+        if self._parent is not None: return self._parent.get(name)
         assert False, f"`{name}` not defined."
 
 class Evaluator:
@@ -141,10 +152,18 @@ class Evaluator:
 
     def _eval_statement(self, statement):
         match statement:
+            case ["block", *statements]: self._eval_block(statements)
             case ["var", name, value]: self._eval_var(name, value)
             case ["set", name, value]: self._eval_set(name, value)
             case ["print", expr]: self._eval_print(expr)
             case unexpected: assert False, f"Internal Error at `{unexpected}`."
+
+    def _eval_block(self, statements):
+        parent_env = self._env
+        self._env = Environment(parent_env)
+        for statement in statements:
+            self._eval_statement(statement)
+        self._env = parent_env
 
     def _eval_var(self, name, value):
         self._env.define(name, self._eval_expr(value))

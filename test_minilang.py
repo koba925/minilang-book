@@ -92,5 +92,11 @@ class TestMinilang(unittest.TestCase):
         self.assertEqual(get_error("set a = 1;"), "`a` not defined.")
         self.assertEqual(get_error("print a;"), "`a` not defined.")
 
+    def test_scope(self):
+        self.assertEqual(get_output("var a = 5 + 6; { var a = 7; print a; } print a;"), [7, 11])
+        self.assertEqual(get_output("var a = 5 + 6; { set a = 7; print a; } print a;"), [7, 7])
+        self.assertEqual(get_error("var a = 5 + 6; { var b = 7; print b; } print b;"), "`b` not defined.")
+        self.assertEqual(get_error("{ print 1;"), "Unexpected token `$EOF`.")
+
 if __name__ == "__main__":
     unittest.main()
