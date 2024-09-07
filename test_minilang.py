@@ -98,5 +98,16 @@ class TestMinilang(unittest.TestCase):
         self.assertEqual(get_error("var a = 5 + 6; { var b = 7; print b; } print b;"), "`b` not defined.")
         self.assertEqual(get_error("{ print 1;"), "Unexpected token `$EOF`.")
 
+    def test_if(self):
+        self.assertEqual(get_ast("if 5 = 5 { print 6; }"), \
+                         ['program', ['if', ['=', 5, 5], ['block', ['print', 6]]]])
+        self.assertEqual(get_output("if 5 = 5 { print 6; }"), [6])
+        self.assertEqual(get_output("if 5 # 5 { print 6; }"), [])
+
+        self.assertEqual(get_output("if true { if true { print 6; } }"), [6])
+        self.assertEqual(get_output("if true { if false { print 6; } }"), [])
+
+        self.assertEqual(get_error("if true print 5;"), "Expected `{`, found `print`.")
+
 if __name__ == "__main__":
     unittest.main()
