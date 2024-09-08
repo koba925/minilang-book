@@ -49,6 +49,7 @@ class Parser:
             case "var" | "set": return self._parse_var_set()
             case "if": return self._parse_if()
             case "while": return self._parse_while()
+            case "def": return self._parse_def()
             case "return": return self._parse_return()
             case "print": return self._parse_print()
             case _: return self._parse_expression_statement()
@@ -91,6 +92,14 @@ class Parser:
         self._check_token("{")
         body = self._parse_block()
         return ["while", cond, body]
+
+    def _parse_def(self):
+        self._next_token()
+        name = self._parse_primary()
+        assert isinstance(name, str),  f"Expected a name, found `{name}`."
+        params = self._parse_parameters()
+        body = self._parse_block()
+        return ["var", name, ["func", params, body]]
 
     def _parse_return(self):
         self._next_token()

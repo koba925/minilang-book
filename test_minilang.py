@@ -303,6 +303,41 @@ class TestMinilang(unittest.TestCase):
                                     var add_6 = make_adder(6);
                                     print add_6(7);
                                     """), [13])
+    def test_def(self):
+        self.assertEqual(get_ast("def sum(a, b) { return a + b; }"), \
+                         ["program", ["var", "sum", ["func", ["a", "b"], ["block", ["return", ["+", "a", "b"]]]]]])
+        self.assertEqual(get_output("""
+                                    def sum(a, b) {
+                                        return a + b;
+                                    }
+                                    print sum(2, 3);
+                                    print sum(4, 5);
+                                    """), [5, 9])
+
+    def test_gcd3(self):
+        self.assertEqual(get_output("""
+                                    def gcd(a, b) {
+                                        var tmp = 0;
+                                        while b # 0 {
+                                            if less(a, b) {
+                                                set tmp = a; set a = b; set b = tmp;
+                                            }
+                                            set a = a - b;
+                                        }
+                                        return a;
+                                    }
+                                    print gcd(36, 12);
+                                    """), [12])
+
+    def test_fib4(self):
+        self.assertEqual(get_output("""
+                                    def fib(n) {
+                                        if n = 1 { return 1; }
+                                        if n = 2 { return 1; }
+                                        return fib(n - 1) + fib(n - 2);
+                                    }
+                                    print fib(6);
+                                    """), [8])
 
 if __name__ == "__main__":
     unittest.main()
