@@ -30,10 +30,10 @@ class TestMinilang(unittest.TestCase):
         self.assertEqual(get_output("print 5; print 6; print 7;"), [5, 6, 7])
         self.assertEqual(get_output("  print  5  ;\n\tprint  6  ;  \n  print\n7\n\n ; \n"), [5, 6, 7])
 
-        self.assertEqual(get_error("prin 5;"), "Unexpected token `prin`.")
+        self.assertEqual(get_error("prin 5;"), "Expected `;`, found `5`.")
         self.assertEqual(get_error("print 5:"), "Expected `;`, found `:`.")
         self.assertEqual(get_error("print 5"), "Expected `;`, found `$EOF`.")
-        self.assertEqual(get_error("print 5; prin 6;"), "Unexpected token `prin`.")
+        self.assertEqual(get_error("print 5; prin 6;"), "Expected `;`, found `6`.")
 
     def test_add_sum(self):
         self.assertEqual(get_output("print 5 + 6;"), [11])
@@ -96,11 +96,11 @@ class TestMinilang(unittest.TestCase):
         self.assertEqual(get_output("var a = 5 + 6; { var a = 7; print a; } print a;"), [7, 11])
         self.assertEqual(get_output("var a = 5 + 6; { set a = 7; print a; } print a;"), [7, 7])
         self.assertEqual(get_error("var a = 5 + 6; { var b = 7; print b; } print b;"), "`b` not defined.")
-        self.assertEqual(get_error("{ print 1;"), "Unexpected token `$EOF`.")
+        self.assertEqual(get_error("{ print 1;"), "Expected `;`, found `$EOF`.")
 
     def test_if(self):
         self.assertEqual(get_ast("if 5 = 5 { print 6; }"), \
-                         ['program', ['if', ['=', 5, 5], ['block', ['print', 6]], ['block']]])
+                         ["program", ["if", ["=", 5, 5], ["block", ["print", 6]], ["block"]]])
         self.assertEqual(get_output("if 5 = 5 { print 6; }"), [6])
         self.assertEqual(get_output("if 5 # 5 { print 6; }"), [])
 
@@ -123,7 +123,7 @@ class TestMinilang(unittest.TestCase):
 
     def test_elif(self):
         self.assertEqual(get_ast("if 5 # 5 { print 5; } elif 5 = 5 { print 6; } else { print 7; }"), \
-                         ['program', ['if', ['#', 5, 5], ['block', ['print', 5]], ['if', ['=', 5, 5], ['block', ['print', 6]], ['block', ['print', 7]]]]])
+                         ["program", ["if", ["#", 5, 5], ["block", ["print", 5]], ["if", ["=", 5, 5], ["block", ["print", 6]], ["block", ["print", 7]]]]])
         self.assertEqual(get_output("if 5 # 5 { print 5; } elif 5 = 5 { print 6; } else { print 7; }"), [6])
 
         self.assertEqual(get_output("if true { print 5; } elif true { print 6; } elif true { print 7; } else { print 8; }"), [5])
@@ -171,6 +171,10 @@ class TestMinilang(unittest.TestCase):
                                     }
                                     print a;
                                     """), [12])
+
+    def test_expression_statement(self):
+        self.assertEqual(get_ast("5 + 6;"), ["program", ["expr", ["+", 5, 6]]])
+        self.assertEqual(get_output("5 + 6;"), [])
 
 if __name__ == "__main__":
     unittest.main()

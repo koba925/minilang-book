@@ -50,7 +50,7 @@ class Parser:
             case "if": return self._parse_if()
             case "while": return self._parse_while()
             case "print": return self._parse_print()
-            case unexpected: assert False, f"Unexpected token `{unexpected}`."
+            case _: return self._parse_expression_statement()
 
     def _parse_block(self):
         block: list = ["block"]
@@ -96,6 +96,11 @@ class Parser:
         expr = self._parse_expression()
         self._consume_token(";")
         return ["print", expr]
+
+    def _parse_expression_statement(self):
+        expr = self._parse_expression()
+        self._consume_token(";")
+        return ["expr", expr]
 
     def _parse_expression(self):
         return self._parse_equality()
@@ -173,11 +178,20 @@ class Environment:
         if self._parent is not None: return self._parent.get(name)
         assert False, f"`{name}` not defined."
 
+    def list(self):
+        if self._parent is None: return [self._values]
+        return self._parent.list() + [self._values]
+
 class Evaluator:
     def __init__(self):
         self.output = []
         self._env = Environment()
         self._env.define("less", lambda a, b: a < b)
+        self._env.define("print_env", self._print_env)
+
+    def _print_env(self):
+        for values in self._env.list():
+            print({ k: self._to_print(v) for k, v in values.items() })
 
     def eval_program(self, program):
         self.output = []
@@ -195,6 +209,7 @@ class Evaluator:
             case ["if", cond, conseq, alt]: self._eval_if(cond, conseq, alt)
             case ["while", cond, body]: self._eval_while(cond, body)
             case ["print", expr]: self._eval_print(expr)
+            case ["expr", expr]: self._eval_expr(expr)
             case unexpected: assert False, f"Internal Error at `{unexpected}`."
 
     def _eval_block(self, statements):
