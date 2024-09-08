@@ -48,6 +48,7 @@ class Parser:
             case "{": return self._parse_block()
             case "var" | "set": return self._parse_var_set()
             case "if": return self._parse_if()
+            case "while": return self._parse_while()
             case "print": return self._parse_print()
             case unexpected: assert False, f"Unexpected token `{unexpected}`."
 
@@ -82,6 +83,13 @@ class Parser:
             self._check_token("{")
             alt = self._parse_block()
         return ["if", cond, conseq, alt]
+
+    def _parse_while(self):
+        self._next_token()
+        cond = self._parse_expression()
+        self._check_token("{")
+        body = self._parse_block()
+        return ["while", cond, body]
 
     def _parse_print(self):
         self._next_token()
@@ -171,6 +179,7 @@ class Evaluator:
             case ["var", name, value]: self._eval_var(name, value)
             case ["set", name, value]: self._eval_set(name, value)
             case ["if", cond, conseq, alt]: self._eval_if(cond, conseq, alt)
+            case ["while", cond, body]: self._eval_while(cond, body)
             case ["print", expr]: self._eval_print(expr)
             case unexpected: assert False, f"Internal Error at `{unexpected}`."
 
@@ -192,6 +201,10 @@ class Evaluator:
             self._eval_statement(conseq)
         else:
             self._eval_statement(alt)
+
+    def _eval_while(self, cond, body):
+        while self._eval_expr(cond):
+            self._eval_statement(body)
 
     def _eval_print(self, expr):
         self.output.append(self._to_print(self._eval_expr(expr)))
