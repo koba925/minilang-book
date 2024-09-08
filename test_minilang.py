@@ -185,5 +185,29 @@ class TestMinilang(unittest.TestCase):
                          ["program", ["expr", ["func", ["a", "b"], ["block", ["expr", ["+", "a", "b"]]]]]])
         self.assertEqual(get_output("print func(a, b) { a + b; };"), ["<func>"])
 
+    def test_user_function_call(self):
+        self.assertEqual(get_output("print func() {}();"), [0])
+        self.assertEqual(get_output("func() { print 5; }();"), [5])
+        self.assertEqual(get_output("func(a, b) { print a + b; }(5, 6);"), [11])
+        self.assertEqual(get_output("""
+                                    var sum = func(a, b) {
+                                        print a + b;
+                                    };
+                                    sum(5, 6); sum(7, 8);
+                                    """), [11, 15])
+
+    def test_fib2(self):
+        self.assertEqual(get_output("""
+                                    var fib = func(n) {
+                                        var i = 0; var a = 1; var b = 0; var tmp = 0;
+                                        while i # n {
+                                            print a;
+                                            set tmp = a; set a = a + b; set b = tmp;
+                                            set i = i + 1;
+                                        }
+                                    };
+                                    fib(3); fib(5);
+                                    """), [1, 1, 2, 1, 1, 2, 3, 5])
+
 if __name__ == "__main__":
     unittest.main()

@@ -278,14 +278,24 @@ class Evaluator:
             case ["=", a, b]: return self._eval_expr(a) == self._eval_expr(b)
             case ["#", a, b]: return self._eval_expr(a) != self._eval_expr(b)
             case [func, *args]:
-                func = self._eval_expr(func)
-                args = [self._eval_expr(arg) for arg in args]
-                return func(*args)
+                return self._apply(self._eval_expr(func),
+                                   [self._eval_expr(arg) for arg in args])
             case unexpected: assert False, f"Internal Error at `{unexpected}`."
 
     def _div(self, a, b):
         assert b != 0, f"Division by zero."
         return a // b
+
+    def _apply(self, func, args):
+        if callable(func): return func(*args)
+
+        [_, parameters, body] = func
+        parent_env = self._env
+        self._env = Environment(parent_env)
+        for param, arg in zip(parameters, args): self._env.define(param, arg)
+        self._eval_statement(body)
+        self._env = parent_env
+        return 0
 
     def _eval_variable(self, name):
         return self._env.get(name)
