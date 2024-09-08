@@ -142,10 +142,30 @@ class Parser:
                 exp = self._parse_expression()
                 self._consume_token(")")
                 return exp
+            case "func": return self._parse_func()
             case int(value) | bool(value) | str(value):
                 self._next_token()
                 return value
             case unexpected: assert False, f"Unexpected token `{unexpected}`."
+
+    def _parse_func(self):
+        self._next_token()
+        params = self._parse_parameters()
+        body = self._parse_block()
+        return ["func", params, body]
+
+    def _parse_parameters(self):
+        self._consume_token("(")
+        params = []
+        while self._current_token != ")":
+            param = self._current_token
+            assert isinstance(param, str), f"Name expected, found `{param}`."
+            self._next_token()
+            params.append(param)
+            if self._current_token != ")":
+                self._consume_token(",")
+        self._consume_token(")")
+        return params
 
     def _consume_token(self, expected_token):
         self._check_token(expected_token)
@@ -242,12 +262,14 @@ class Evaluator:
         match value:
             case bool(b): return "true" if b else "false"
             case v if callable(v): return "<builtin>"
+            case ["func", *_]: return "<func>"
             case _: return value
 
     def _eval_expr(self, expr):
         match expr:
             case int(value) | bool(value): return value
             case str(name): return self._eval_variable(name)
+            case ["func", param, body]: return ["func", param, body]
             case ["^", a, b]: return self._eval_expr(a) ** self._eval_expr(b)
             case ["*", a, b]: return self._eval_expr(a) * self._eval_expr(b)
             case ["/", a, b]: return self._div(self._eval_expr(a), self._eval_expr(b))
