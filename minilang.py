@@ -74,7 +74,12 @@ class Parser:
         cond = self._parse_expression()
         self._check_token("{")
         conseq = self._parse_block()
-        return ["if", cond, conseq]
+        alt = ["block"]
+        if self._current_token == "else":
+            self._next_token()
+            self._check_token("{")
+            alt = self._parse_block()
+        return ["if", cond, conseq, alt]
 
     def _parse_print(self):
         self._next_token()
@@ -163,7 +168,7 @@ class Evaluator:
             case ["block", *statements]: self._eval_block(statements)
             case ["var", name, value]: self._eval_var(name, value)
             case ["set", name, value]: self._eval_set(name, value)
-            case ["if", cond, conseq]: self._eval_if(cond, conseq)
+            case ["if", cond, conseq, alt]: self._eval_if(cond, conseq, alt)
             case ["print", expr]: self._eval_print(expr)
             case unexpected: assert False, f"Internal Error at `{unexpected}`."
 
@@ -180,9 +185,11 @@ class Evaluator:
     def _eval_set(self, name, value):
         self._env.assign(name, self._eval_expr(value))
 
-    def _eval_if(self, cond, conseq):
+    def _eval_if(self, cond, conseq, alt):
         if self._eval_expr(cond):
             self._eval_statement(conseq)
+        else:
+            self._eval_statement(alt)
 
     def _eval_print(self, expr):
         self.output.append(self._to_print(self._eval_expr(expr)))
