@@ -100,7 +100,7 @@ class TestMinilang(unittest.TestCase):
 
     def test_if(self):
         self.assertEqual(get_ast("if 5 = 5 { print 6; }"), \
-                         ["program", ["if", ["=", 5, 5], ["block", ["print", 6]], ["block"]]])
+                         ['program', ['if', ['=', 5, 5], ['block', ['print', 6]], ['block']]])
         self.assertEqual(get_output("if 5 = 5 { print 6; }"), [6])
         self.assertEqual(get_output("if 5 # 5 { print 6; }"), [])
 
@@ -123,7 +123,7 @@ class TestMinilang(unittest.TestCase):
 
     def test_elif(self):
         self.assertEqual(get_ast("if 5 # 5 { print 5; } elif 5 = 5 { print 6; } else { print 7; }"), \
-                         ["program", ["if", ["#", 5, 5], ["block", ["print", 5]], ["if", ["=", 5, 5], ["block", ["print", 6]], ["block", ["print", 7]]]]])
+                         ['program', ['if', ['#', 5, 5], ['block', ['print', 5]], ['if', ['=', 5, 5], ['block', ['print', 6]], ['block', ['print', 7]]]]])
         self.assertEqual(get_output("if 5 # 5 { print 5; } elif 5 = 5 { print 6; } else { print 7; }"), [6])
 
         self.assertEqual(get_output("if true { print 5; } elif true { print 6; } elif true { print 7; } else { print 8; }"), [5])
@@ -151,6 +151,26 @@ class TestMinilang(unittest.TestCase):
                                         set i = i + 1;
                                     }
                                     """), [1, 1, 2, 3, 5])
+
+    def test_builtin_function(self):
+        self.assertEqual(get_ast("print less(5 + 6, 5 * 6);"),
+                         ["program", ["print", ["less", ["+", 5, 6], ["*", 5, 6]]]])
+        self.assertEqual(get_output("print less(5 + 6, 5 * 6);"), ["true"])
+        self.assertEqual(get_output("print less(5 * 6, 5 + 6);"), ["false"])
+        self.assertEqual(get_output("print less;"), ["<builtin>"])
+        self.assertEqual(get_error("print less(5 * 6 7);"), "Expected `,`, found `7`.")
+
+    def test_gcd(self):
+        self.assertEqual(get_output("""
+                                    var a = 36; var b = 24; var tmp = 0;
+                                    while b # 0 {
+                                        if less(a, b) {
+                                            set tmp = a; set a = b; set b = tmp;
+                                        }
+                                        set a = a - b;
+                                    }
+                                    print a;
+                                    """), [12])
 
 if __name__ == "__main__":
     unittest.main()

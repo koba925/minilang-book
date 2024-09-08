@@ -112,10 +112,23 @@ class Parser:
         return result
 
     def _parse_power(self):
-        power = self._parse_primary()
+        power = self._parse_call()
         if self._current_token != "^": return power
         self._next_token()
         return ["^", power, self._parse_power()]
+
+    def _parse_call(self):
+        call = self._parse_primary()
+        while self._current_token == "(":
+            self._next_token()
+            args = []
+            while self._current_token != ")":
+                args.append(self._parse_expression())
+                if self._current_token != ")":
+                    self._consume_token(",")
+            call = [call] + args
+            self._consume_token(")")
+        return call
 
     def _parse_primary(self):
         match self._current_token:
@@ -164,6 +177,7 @@ class Evaluator:
     def __init__(self):
         self.output = []
         self._env = Environment()
+        self._env.define("less", lambda a, b: a < b)
 
     def eval_program(self, program):
         self.output = []
@@ -212,6 +226,7 @@ class Evaluator:
     def _to_print(self, value):
         match value:
             case bool(b): return "true" if b else "false"
+            case v if callable(v): return "<builtin>"
             case _: return value
 
     def _eval_expr(self, expr):
@@ -225,6 +240,10 @@ class Evaluator:
             case ["-", a, b]: return self._eval_expr(a) - self._eval_expr(b)
             case ["=", a, b]: return self._eval_expr(a) == self._eval_expr(b)
             case ["#", a, b]: return self._eval_expr(a) != self._eval_expr(b)
+            case [func, *args]:
+                func = self._eval_expr(func)
+                args = [self._eval_expr(arg) for arg in args]
+                return func(*args)
             case unexpected: assert False, f"Internal Error at `{unexpected}`."
 
     def _div(self, a, b):
