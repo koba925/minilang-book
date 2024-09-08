@@ -281,7 +281,7 @@ class Evaluator:
         match expr:
             case int(value) | bool(value): return value
             case str(name): return self._eval_variable(name)
-            case ["func", param, body]: return ["func", param, body]
+            case ["func", param, body]: return ["func", param, body, self._env]
             case ["^", a, b]: return self._eval_expr(a) ** self._eval_expr(b)
             case ["*", a, b]: return self._eval_expr(a) * self._eval_expr(b)
             case ["/", a, b]: return self._div(self._eval_expr(a), self._eval_expr(b))
@@ -301,9 +301,9 @@ class Evaluator:
     def _apply(self, func, args):
         if callable(func): return func(*args)
 
-        [_, parameters, body] = func
+        [_, parameters, body, env] = func
         parent_env = self._env
-        self._env = Environment(parent_env)
+        self._env = Environment(env)
         for param, arg in zip(parameters, args): self._env.define(param, arg)
         value = 0
         try:

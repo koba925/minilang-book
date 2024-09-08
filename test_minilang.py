@@ -271,5 +271,38 @@ class TestMinilang(unittest.TestCase):
                                     print is_odd(6);
                                     """), ["false", "true", "true", "false"])
 
+    def test_closure(self):
+        self.assertEqual(get_error("print func(a) { return a + b; }(5);"), "`b` not defined.")
+        self.assertEqual(get_output("var b = 6; print func(a) { return a + b; } (5);"), [11])
+        self.assertEqual(get_output("""
+                                    var fa = func(a) { return a + b; };
+                                    var b = 6;
+                                    print fa(5);
+                                    """), [11])
+        self.assertEqual(get_error("""
+                                   var fa = func(a) { return a + b; };
+                                   var fb = func() {
+                                       var b = 6;
+                                       return fa(5);
+                                   };
+                                   print fb();
+                                   """), "`b` not defined.")
+        self.assertEqual(get_output("""
+                                    var fb = func() {
+                                        var b = 6;
+                                        return func(a) { return a + b; };
+                                    };
+                                    var fa = fb();
+                                    print fa(5);
+                                    """), [11])
+        self.assertEqual(get_output("""
+                                    var make_adder = func(a) {
+                                        return func(b) { return a + b; };
+                                    };
+                                    var a = 5;
+                                    var add_6 = make_adder(6);
+                                    print add_6(7);
+                                    """), [13])
+
 if __name__ == "__main__":
     unittest.main()
