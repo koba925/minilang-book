@@ -209,5 +209,67 @@ class TestMinilang(unittest.TestCase):
                                     fib(3); fib(5);
                                     """), [1, 1, 2, 1, 1, 2, 3, 5])
 
+    def test_return(self):
+        self.assertEqual(get_output("print func() { return; }();"), [0])
+        self.assertEqual(get_output("print func() { return 5; }();"), [5])
+        self.assertEqual(get_output("print func(a, b) { return a + b; }(5, 6);"), [11])
+        self.assertEqual(get_output("func() { print 5; return; print 6; }();"), [5])
+        self.assertEqual(get_output("""
+                                    var sum = func(a, b) {
+                                        return a + b;
+                                    };
+                                    print sum(5, 6);
+                                    print sum(7, 8);
+                                    """), [11, 15])
+        self.assertEqual(get_output("""
+                                    var nums_to_n = func(n) {
+                                        var k = 1;
+                                        while true {
+                                            print k;
+                                            if k = n { return; }
+                                            set k = k + 1;
+                                        }
+                                    };
+                                    nums_to_n(5);
+                                    """), [1, 2, 3, 4, 5])
+        self.assertEqual(get_output("print func() { return less; }();"), ["<builtin>"])
+        self.assertEqual(get_output("print func() { return less; }()(5, 6);"), ["true"])
+        self.assertEqual(get_output("print func() { return func(a) { return a + 5; }; }()(6);"), [11])
+
+    def test_gcd2(self):
+        self.assertEqual(get_output("""
+                                    var gcd = func(a, b) {
+                                        var tmp = 0;
+                                        while b # 0 {
+                                            if less(a, b) {
+                                                set tmp = a; set a = b; set b = tmp;
+                                            }
+                                            set a = a - b;
+                                        }
+                                        return a;
+                                    };
+                                    print gcd(36, 12);
+                                    """), [12])
+
+    def test_fib3(self):
+        self.assertEqual(get_output("""
+                                    var fib = func(n) {
+                                        if n = 1 { return 1; }
+                                        if n = 2 { return 1; }
+                                        return fib(n - 1) + fib(n - 2);
+                                    };
+                                    print fib(6);
+                                    """), [8])
+
+    def test_even_odd(self):
+        self.assertEqual(get_output("""
+                                    var is_even = func(a) { if a = 0 { return true; } else { return is_odd(a - 1); } };
+                                    var is_odd = func(a) { if a = 0 { return false; } else { return is_even(a - 1); } };
+                                    print is_even(5);
+                                    print is_odd(5);
+                                    print is_even(6);
+                                    print is_odd(6);
+                                    """), ["false", "true", "true", "false"])
+
 if __name__ == "__main__":
     unittest.main()

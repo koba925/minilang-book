@@ -49,6 +49,7 @@ class Parser:
             case "var" | "set": return self._parse_var_set()
             case "if": return self._parse_if()
             case "while": return self._parse_while()
+            case "return": return self._parse_return()
             case "print": return self._parse_print()
             case _: return self._parse_expression_statement()
 
@@ -90,6 +91,13 @@ class Parser:
         self._check_token("{")
         body = self._parse_block()
         return ["while", cond, body]
+
+    def _parse_return(self):
+        self._next_token()
+        value = 0
+        if self._current_token != ";": value = self._parse_expression()
+        self._consume_token(";")
+        return ["return", value]
 
     def _parse_print(self):
         self._next_token()
@@ -179,6 +187,9 @@ class Parser:
         self._current_token = self.scanner.next_token()
         return self._current_token
 
+class Return(Exception):
+    def __init__(self, value): self.value = value
+
 class Environment:
     def __init__(self, parent:"Environment | None"=None):
         self._values = {}
@@ -228,6 +239,7 @@ class Evaluator:
             case ["set", name, value]: self._eval_set(name, value)
             case ["if", cond, conseq, alt]: self._eval_if(cond, conseq, alt)
             case ["while", cond, body]: self._eval_while(cond, body)
+            case ["return", value]: raise Return(self._eval_expr(value))
             case ["print", expr]: self._eval_print(expr)
             case ["expr", expr]: self._eval_expr(expr)
             case unexpected: assert False, f"Internal Error at `{unexpected}`."
@@ -293,9 +305,13 @@ class Evaluator:
         parent_env = self._env
         self._env = Environment(parent_env)
         for param, arg in zip(parameters, args): self._env.define(param, arg)
-        self._eval_statement(body)
+        value = 0
+        try:
+            self._eval_statement(body)
+        except Return as ret:
+            value = ret.value
         self._env = parent_env
-        return 0
+        return value
 
     def _eval_variable(self, name):
         return self._env.get(name)
