@@ -127,7 +127,8 @@ class Parser:
     def _parse_expression(self):
         return self._parse_equality()
 
-    def _parse_equality(self): return self._parse_binop_left(("=", "#"), self._parse_add_sub)
+    def _parse_equality(self): return self._parse_binop_left(("=", "#"), self._parse_comparison)
+    def _parse_comparison(self): return self._parse_binop_left(("<", ">"), self._parse_add_sub)
     def _parse_add_sub(self): return self._parse_binop_left(("+", "-"), self._parse_mult_div)
     def _parse_mult_div(self): return self._parse_binop_left(("*", "/"), self._parse_power)
 
@@ -301,6 +302,8 @@ class Evaluator:
             case ["/", a, b]: return self._div(self._eval_expr(a), self._eval_expr(b))
             case ["+", a, b]: return self._eval_expr(a) + self._eval_expr(b)
             case ["-", a, b]: return self._eval_expr(a) - self._eval_expr(b)
+            case ["<", a, b]: return self._eval_expr(a) < self._eval_expr(b)
+            case [">", a, b]: return self._eval_expr(a) > self._eval_expr(b)
             case ["=", a, b]: return self._eval_expr(a) == self._eval_expr(b)
             case ["#", a, b]: return self._eval_expr(a) != self._eval_expr(b)
             case [func, *args]:

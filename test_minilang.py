@@ -352,5 +352,32 @@ class TestMinilang(unittest.TestCase):
                                     print 8; ! print 9;
                                     """), [5, 8])
 
+    def test_comparison(self):
+        self.assertEqual(get_ast("5 + 6 < 5 * 6;"),
+                         ["program", ["expr", ["<", ["+", 5, 6], ["*", 5, 6]]]])
+        self.assertEqual(get_ast("5 < 6 = 7 > 8;"),
+                         ["program", ["expr", ["=", ["<", 5, 6], [">", 7, 8]]]])
+        self.assertEqual(get_output("print 5 < 6;"), ["true"])
+        self.assertEqual(get_output("print 5 < 5;"), ["false"])
+        self.assertEqual(get_output("print 6 < 5;"), ["false"])
+        self.assertEqual(get_output("print 5 > 6;"), ["false"])
+        self.assertEqual(get_output("print 5 > 5;"), ["false"])
+        self.assertEqual(get_output("print 6 > 5;"), ["true"])
+
+    def test_gcd4(self):
+        self.assertEqual(get_output("""
+                                    def gcd(a, b) {
+                                        var tmp = 0;
+                                        while b > 0 {
+                                            if a < b {
+                                                set tmp = a; set a = b; set b = tmp;
+                                            }
+                                            set a = a - b;
+                                        }
+                                        return a;
+                                    }
+                                    print gcd(36, 12);
+                                    """), [12])
+
 if __name__ == "__main__":
     unittest.main()
