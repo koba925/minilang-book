@@ -54,6 +54,7 @@ class Parser:
             case "var" | "set": return self._parse_var_set()
             case "if": return self._parse_if()
             case "while": return self._parse_while()
+            case "break": return self._parse_break()
             case "def": return self._parse_def()
             case "return": return self._parse_return()
             case "print": return self._parse_print()
@@ -97,6 +98,11 @@ class Parser:
         self._check_token("{")
         body = self._parse_block()
         return ["while", cond, body]
+
+    def _parse_break(self):
+        self._next_token()
+        self._consume_token(";")
+        return ["break"]
 
     def _parse_def(self):
         self._next_token()
@@ -211,6 +217,7 @@ class Parser:
         self._current_token = self.scanner.next_token()
         return self._current_token
 
+class Break(Exception): pass
 class Return(Exception):
     def __init__(self, value): self.value = value
 
@@ -259,6 +266,7 @@ class Evaluator:
                         self._eval_statement(statement)
                 case unexpected: assert False, f"Internal Error at `{unexpected}`."
         except Return: assert False, "Return at top level."
+        except Break: assert False, "Break at top level."
 
     def _eval_statement(self, statement):
         match statement:
@@ -267,6 +275,7 @@ class Evaluator:
             case ["set", name, value]: self._eval_set(name, value)
             case ["if", cond, conseq, alt]: self._eval_if(cond, conseq, alt)
             case ["while", cond, body]: self._eval_while(cond, body)
+            case ["break"]: raise Break()
             case ["return", value]: raise Return(self._eval_expr(value))
             case ["print", expr]: self._eval_print(expr)
             case ["expr", expr]: self._eval_expr(expr)
@@ -293,7 +302,8 @@ class Evaluator:
 
     def _eval_while(self, cond, body):
         while self._eval_expr(cond):
-            self._eval_statement(body)
+            try: self._eval_statement(body)
+            except Break: break
 
     def _eval_print(self, expr):
         self.output.append(self._to_print(self._eval_expr(expr)))

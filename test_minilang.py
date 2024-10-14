@@ -440,5 +440,17 @@ class TestMinilang(unittest.TestCase):
         self.assertEqual(get_output("print 5--6;"), [11])
         self.assertEqual(get_output("print 5---6;"), [-1])
 
+    def test_break(self):
+        self.assertEqual(get_output("""
+                                    var n = 5;
+                                    while true {
+                                        if n = 8 { break; }
+                                        print n;
+                                        set n = n + 1;
+                                    }
+                                    print 10;
+                                    """), [5, 6, 7, 10])
+        self.assertEqual(get_error("break;"), "Break at top level.")
+
 if __name__ == "__main__":
     unittest.main()
