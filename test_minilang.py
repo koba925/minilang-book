@@ -339,5 +339,18 @@ class TestMinilang(unittest.TestCase):
                                     print fib(6);
                                     """), [8])
 
+    def test_comment(self):
+        self.assertEqual(get_ast("""
+                                 print 5; ! print 6;
+                                 ! print 7;
+                                 print 8; ! print 9;
+                                 """), \
+                         get_ast("print 5; print 8;"))
+        self.assertEqual(get_output("""
+                                    print 5; ! print 6;
+                                    ! print 7;
+                                    print 8; ! print 9;
+                                    """), [5, 8])
+
 if __name__ == "__main__":
     unittest.main()

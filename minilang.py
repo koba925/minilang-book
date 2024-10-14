@@ -21,6 +21,11 @@ class Scanner:
                 while self._current_char().isnumeric():
                     self._current_position += 1
                 return int(self._source[start:self._current_position])
+            case "!":
+                self._current_position += 1
+                while self._current_char() != "\n":
+                    self._current_position += 1
+                return self.next_token()
             case _:
                 self._current_position += 1
                 return self._source[start:self._current_position]
