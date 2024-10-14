@@ -404,5 +404,24 @@ class TestMinilang(unittest.TestCase):
                                     print gcd(36, 24);
                                     """), [12])
 
+    def test_and_or(self):
+        self.assertEqual(get_ast("5 # 6 or 7 # 8 and 9 = 5;"),
+                         ["program", ["expr", ["or", ["#", 5, 6], ["and", ["#", 7, 8], ["=", 9, 5]]]]])
+        self.assertEqual(get_output("print true and true;"), ["true"])
+        self.assertEqual(get_output("print true and false;"), ["false"])
+        self.assertEqual(get_output("print false and 1 / 0;"), ["false"])
+        self.assertEqual(get_output("print true or 1 / 0;"), ["true"])
+        self.assertEqual(get_output("print false or true;"), ["true"])
+        self.assertEqual(get_output("print false or false;"), ["false"])
+
+    def test_fib5(self):
+        self.assertEqual(get_output("""
+                                    def fib(n) {
+                                        if n = 1 or n = 2 { return 1; }
+                                        return fib(n - 1) + fib(n - 2);
+                                    }
+                                    print fib(6);
+                                    """), [8])
+
 if __name__ == "__main__":
     unittest.main()

@@ -125,8 +125,10 @@ class Parser:
         return ["expr", expr]
 
     def _parse_expression(self):
-        return self._parse_equality()
+        return self._parse_or()
 
+    def _parse_or(self): return self._parse_binop_left(("or",), self._parse_and)
+    def _parse_and(self): return self._parse_binop_left(("and",), self._parse_equality)
     def _parse_equality(self): return self._parse_binop_left(("=", "#"), self._parse_comparison)
     def _parse_comparison(self): return self._parse_binop_left(("<", ">"), self._parse_add_sub)
     def _parse_add_sub(self): return self._parse_binop_left(("+", "-"), self._parse_mult_div_mod)
@@ -309,6 +311,8 @@ class Evaluator:
             case [">", a, b]: return self._eval_expr(a) > self._eval_expr(b)
             case ["=", a, b]: return self._eval_expr(a) == self._eval_expr(b)
             case ["#", a, b]: return self._eval_expr(a) != self._eval_expr(b)
+            case ["and", a, b]: return self._eval_expr(a) and self._eval_expr(b)
+            case ["or", a, b]: return self._eval_expr(a) or self._eval_expr(b)
             case [func, *args]:
                 return self._apply(self._eval_expr(func),
                                    [self._eval_expr(arg) for arg in args])
