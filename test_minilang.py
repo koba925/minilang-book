@@ -248,6 +248,7 @@ class TestMinilang(unittest.TestCase):
         self.assertEqual(get_output("print func() { return less; }();"), ["<builtin>"])
         self.assertEqual(get_output("print func() { return less; }()(5, 6);"), ["true"])
         self.assertEqual(get_output("print func() { return func(a) { return a + 5; }; }()(6);"), [11])
+        self.assertEqual(get_error("return;"), "Return at top level.")
 
     def test_gcd2(self):
         self.assertEqual(get_output("""

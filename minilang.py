@@ -252,11 +252,13 @@ class Evaluator:
 
     def eval_program(self, program):
         self.output = []
-        match program:
-            case ["program", *statements]:
-                for statement in statements:
-                    self._eval_statement(statement)
-            case unexpected: assert False, f"Internal Error at `{unexpected}`."
+        try:
+            match program:
+                case ["program", *statements]:
+                    for statement in statements:
+                        self._eval_statement(statement)
+                case unexpected: assert False, f"Internal Error at `{unexpected}`."
+        except Return: assert False, "Return at top level."
 
     def _eval_statement(self, statement):
         match statement:
