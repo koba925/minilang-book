@@ -423,5 +423,13 @@ class TestMinilang(unittest.TestCase):
                                     print fib(6);
                                     """), [8])
 
+    def test_not(self):
+        self.assertEqual(get_ast("not true or false;"), ["program", ["expr", ["or", ["not", True], False]]])
+        self.assertEqual(get_ast("not true = false;"), ["program", ["expr", ["not", ["=", True, False]]]])
+        self.assertEqual(get_ast("not not true;"), ["program", ["expr", ["not", ["not", True]]]])
+        self.assertEqual(get_output("print not true;"), ["false"])
+        self.assertEqual(get_output("print not false;"), ["true"])
+        self.assertEqual(get_output("print not not true;"), ["true"])
+
 if __name__ == "__main__":
     unittest.main()
