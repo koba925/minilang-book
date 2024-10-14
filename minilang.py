@@ -129,16 +129,12 @@ class Parser:
 
     def _parse_or(self): return self._parse_binop_left(("or",), self._parse_and)
     def _parse_and(self): return self._parse_binop_left(("and",), self._parse_not)
-
-    def _parse_not(self):
-        if self._current_token != "not": return self._parse_equality()
-        self._next_token()
-        return ["not", self._parse_not()]
-
+    def _parse_not(self): return self._parse_unary(("not",), self._parse_equality)
     def _parse_equality(self): return self._parse_binop_left(("=", "#"), self._parse_comparison)
     def _parse_comparison(self): return self._parse_binop_left(("<", ">"), self._parse_add_sub)
     def _parse_add_sub(self): return self._parse_binop_left(("+", "-"), self._parse_mult_div_mod)
     def _parse_mult_div_mod(self): return self._parse_binop_left(("*", "/", "%"), self._parse_unary_minus)
+    def _parse_unary_minus(self): return self._parse_unary(("-",), self._parse_power)
 
     def _parse_binop_left(self, ops, sub_element):
         result = sub_element()
@@ -147,10 +143,10 @@ class Parser:
             result = [op, result, sub_element()]
         return result
 
-    def _parse_unary_minus(self):
-        if self._current_token != "-": return self._parse_power()
+    def _parse_unary(self, ops, sub_element):
+        if (op := self._current_token) not in ops: return sub_element()
         self._next_token()
-        return ["-", self._parse_unary_minus()]
+        return [op, self._parse_unary(ops, sub_element)]
 
     def _parse_power(self):
         power = self._parse_call()
