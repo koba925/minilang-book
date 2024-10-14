@@ -431,5 +431,13 @@ class TestMinilang(unittest.TestCase):
         self.assertEqual(get_output("print not false;"), ["true"])
         self.assertEqual(get_output("print not not true;"), ["true"])
 
+    def test_unary_minus(self):
+        self.assertEqual(get_ast("- 5 ^ 6;"), ["program", ["expr", ["-", ["^", 5, 6]]]])
+        self.assertEqual(get_ast("- 5 * 6;"), ["program", ["expr", ["*", ["-", 5], 6]]])
+        self.assertEqual(get_ast("--5;"), ["program", ["expr", ["-", ["-", 5]]]])
+        self.assertEqual(get_output("print -5 * 6;"), [-30])
+        self.assertEqual(get_output("print 5--6;"), [11])
+        self.assertEqual(get_output("print 5---6;"), [-1])
+
 if __name__ == "__main__":
     unittest.main()
