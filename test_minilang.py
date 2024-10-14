@@ -44,15 +44,28 @@ class TestMinilang(unittest.TestCase):
         self.assertEqual(get_ast("print 18 - 7 - 6;"), ["program", ["print", ["-", ["-", 18, 7], 6]]])
         self.assertEqual(get_output("print 18 - 7 - 6;"), [5])
 
-    def test_mul_div(self):
+    def test_mul_div_mod(self):
         self.assertEqual(get_output("print 5 * 6;"), [30])
         self.assertEqual(get_ast("print 5 * 6 * 7;"), ["program", ["print", ["*", ["*", 5, 6], 7]]])
         self.assertEqual(get_output("print 5 * 6 * 7;"), [210])
 
         self.assertEqual(get_output("print 210 / 7;"), [30])
+        self.assertEqual(get_output("print 211 / 7;"), [30])
         self.assertEqual(get_ast("print 210 / 7 / 6;"), ["program", ["print", ["/", ["/", 210, 7], 6]]])
         self.assertEqual(get_output("print 210 / 7 / 6;"), [5])
         self.assertEqual(get_error("print 5 / 0;"), "Division by zero.")
+
+        self.assertEqual(get_output("print 62 % 9;"), [8])
+        self.assertEqual(get_ast("print 62 % 9 % 3;"), ["program", ["print", ["%", ["%",62, 9], 3]]])
+        self.assertEqual(get_output("print 62 % 9 % 3;"), [2])
+        self.assertEqual(get_error("print 5 % 0;"), "Division by zero.")
+
+        self.assertEqual(get_ast("print 5 * 6 + 7;"), ["program", ["print", ["+", ["*", 5, 6], 7]]])
+        self.assertEqual(get_ast("print 5 + 6 * 7;"), ["program", ["print", ["+", 5, ["*", 6, 7]]]])
+        self.assertEqual(get_ast("print 5 / 6 + 7;"), ["program", ["print", ["+", ["/", 5, 6], 7]]])
+        self.assertEqual(get_ast("print 5 + 6 / 7;"), ["program", ["print", ["+", 5, ["/", 6, 7]]]])
+        self.assertEqual(get_ast("print 5 % 6 + 7;"), ["program", ["print", ["+", ["%", 5, 6], 7]]])
+        self.assertEqual(get_ast("print 5 + 6 % 7;"), ["program", ["print", ["+", 5, ["%", 6, 7]]]])
 
     def test_parens(self):
         self.assertEqual(get_ast("print (5 + 6) * 7;"), ["program", ["print", ["*", ["+", 5, 6], 7]]])
@@ -377,6 +390,18 @@ class TestMinilang(unittest.TestCase):
                                         return a;
                                     }
                                     print gcd(36, 12);
+                                    """), [12])
+
+    def test_gcd5(self):
+        self.assertEqual(get_output("""
+                                    def gcd(a, b) {
+                                        var tmp = 0;
+                                        while b > 0 {
+                                            set tmp = b; set b = a % b; set a = tmp;
+                                        }
+                                        return a;
+                                    }
+                                    print gcd(36, 24);
                                     """), [12])
 
 if __name__ == "__main__":

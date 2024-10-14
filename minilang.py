@@ -129,8 +129,8 @@ class Parser:
 
     def _parse_equality(self): return self._parse_binop_left(("=", "#"), self._parse_comparison)
     def _parse_comparison(self): return self._parse_binop_left(("<", ">"), self._parse_add_sub)
-    def _parse_add_sub(self): return self._parse_binop_left(("+", "-"), self._parse_mult_div)
-    def _parse_mult_div(self): return self._parse_binop_left(("*", "/"), self._parse_power)
+    def _parse_add_sub(self): return self._parse_binop_left(("+", "-"), self._parse_mult_div_mod)
+    def _parse_mult_div_mod(self): return self._parse_binop_left(("*", "/", "%"), self._parse_power)
 
     def _parse_binop_left(self, ops, sub_element):
         result = sub_element()
@@ -228,6 +228,8 @@ class Environment:
         if self._parent is None: return [self._values]
         return self._parent.list() + [self._values]
 
+import operator
+
 class Evaluator:
     def __init__(self):
         self.output = []
@@ -299,7 +301,8 @@ class Evaluator:
             case ["func", param, body]: return ["func", param, body, self._env]
             case ["^", a, b]: return self._eval_expr(a) ** self._eval_expr(b)
             case ["*", a, b]: return self._eval_expr(a) * self._eval_expr(b)
-            case ["/", a, b]: return self._div(self._eval_expr(a), self._eval_expr(b))
+            case ["/", a, b]: return self._safe_div_mod(operator.floordiv, self._eval_expr(a), self._eval_expr(b))
+            case ["%", a, b]: return self._safe_div_mod(operator.mod, self._eval_expr(a), self._eval_expr(b))
             case ["+", a, b]: return self._eval_expr(a) + self._eval_expr(b)
             case ["-", a, b]: return self._eval_expr(a) - self._eval_expr(b)
             case ["<", a, b]: return self._eval_expr(a) < self._eval_expr(b)
@@ -311,9 +314,9 @@ class Evaluator:
                                    [self._eval_expr(arg) for arg in args])
             case unexpected: assert False, f"Internal Error at `{unexpected}`."
 
-    def _div(self, a, b):
+    def _safe_div_mod(self, op, a, b):
         assert b != 0, f"Division by zero."
-        return a // b
+        return op(a, b)
 
     def _apply(self, func, args):
         if callable(func): return func(*args)
