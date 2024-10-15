@@ -199,7 +199,7 @@ class TestMinilang(unittest.TestCase):
         self.assertEqual(get_output("print func(a, b) { a + b; };"), ["<func>"])
 
     def test_user_function_call(self):
-        self.assertEqual(get_output("print func() {}();"), [0])
+        self.assertEqual(get_output("print func() {}();"), ["null"])
         self.assertEqual(get_output("func() { print 5; }();"), [5])
         self.assertEqual(get_output("func(a, b) { print a + b; }(5, 6);"), [11])
         self.assertEqual(get_output("""
@@ -223,7 +223,7 @@ class TestMinilang(unittest.TestCase):
                                     """), [1, 1, 2, 1, 1, 2, 3, 5])
 
     def test_return(self):
-        self.assertEqual(get_output("print func() { return; }();"), [0])
+        self.assertEqual(get_output("print func() { return; }();"), ["null"])
         self.assertEqual(get_output("print func() { return 5; }();"), [5])
         self.assertEqual(get_output("print func(a, b) { return a + b; }(5, 6);"), [11])
         self.assertEqual(get_output("func() { print 5; return; print 6; }();"), [5])
@@ -465,6 +465,11 @@ class TestMinilang(unittest.TestCase):
                                     """), [6, 8, 10])
         self.assertEqual(get_error("continue;"), "Continue at top level.")
         self.assertEqual(get_error("func() { continue; } ();"), "Continue outside loop.")
+
+    def test_null(self):
+        self.assertEqual(get_output("print null;"), ["null"])
+        self.assertEqual(get_output("print null = null;"), ["true"])
+        self.assertEqual(get_output("print null = 0;"), ["false"])
 
 if __name__ == "__main__":
     unittest.main()

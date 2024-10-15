@@ -16,6 +16,7 @@ class Scanner:
                 match token:
                     case "true": return True
                     case "false": return False
+                    case "null": return None
                     case _: return token
             case c if c.isnumeric():
                 while self._current_char().isnumeric():
@@ -120,7 +121,7 @@ class Parser:
 
     def _parse_return(self):
         self._next_token()
-        value = 0
+        value = None
         if self._current_token != ";": value = self._parse_expression()
         self._consume_token(";")
         return ["return", value]
@@ -190,6 +191,9 @@ class Parser:
             case int(value) | bool(value) | str(value):
                 self._next_token()
                 return value
+            case None:
+                self._next_token()
+                return None
             case unexpected: assert False, f"Unexpected token `{unexpected}`."
 
     def _parse_func(self):
@@ -323,6 +327,7 @@ class Evaluator:
     def _to_print(self, value):
         match value:
             case bool(b): return "true" if b else "false"
+            case None: return "null"
             case v if callable(v): return "<builtin>"
             case ["func", *_]: return "<func>"
             case _: return value
@@ -330,6 +335,7 @@ class Evaluator:
     def _eval_expr(self, expr):
         match expr:
             case int(value) | bool(value): return value
+            case None: return None
             case str(name): return self._eval_variable(name)
             case ["func", param, body]: return ["func", param, body, self._env]
             case ["^", a, b]: return self._eval_expr(a) ** self._eval_expr(b)
@@ -362,7 +368,7 @@ class Evaluator:
         parent_env = self._env
         self._env = Environment(env)
         for param, arg in zip(parameters, args): self._env.define(param, arg)
-        value = 0
+        value = None
         try:
             self._eval_statement(body)
         except Break: assert False, "Break outside loop."
