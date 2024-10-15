@@ -55,6 +55,7 @@ class Parser:
             case "if": return self._parse_if()
             case "while": return self._parse_while()
             case "break": return self._parse_break()
+            case "continue": return self._parse_continue()
             case "def": return self._parse_def()
             case "return": return self._parse_return()
             case "print": return self._parse_print()
@@ -103,6 +104,11 @@ class Parser:
         self._next_token()
         self._consume_token(";")
         return ["break"]
+
+    def _parse_continue(self):
+        self._next_token()
+        self._consume_token(";")
+        return ["continue"]
 
     def _parse_def(self):
         self._next_token()
@@ -218,6 +224,7 @@ class Parser:
         return self._current_token
 
 class Break(Exception): pass
+class Continue(Exception): pass
 class Return(Exception):
     def __init__(self, value): self.value = value
 
@@ -267,6 +274,7 @@ class Evaluator:
                 case unexpected: assert False, f"Internal Error at `{unexpected}`."
         except Return: assert False, "Return at top level."
         except Break: assert False, "Break at top level."
+        except Continue: assert False, "Continue at top level."
 
     def _eval_statement(self, statement):
         match statement:
@@ -276,6 +284,7 @@ class Evaluator:
             case ["if", cond, conseq, alt]: self._eval_if(cond, conseq, alt)
             case ["while", cond, body]: self._eval_while(cond, body)
             case ["break"]: raise Break()
+            case ["continue"]: raise Continue()
             case ["return", value]: raise Return(self._eval_expr(value))
             case ["print", expr]: self._eval_print(expr)
             case ["expr", expr]: self._eval_expr(expr)
@@ -284,9 +293,11 @@ class Evaluator:
     def _eval_block(self, statements):
         parent_env = self._env
         self._env = Environment(parent_env)
-        for statement in statements:
-            self._eval_statement(statement)
-        self._env = parent_env
+        try:
+            for statement in statements:
+                self._eval_statement(statement)
+        finally:
+            self._env = parent_env
 
     def _eval_var(self, name, value):
         self._env.define(name, self._eval_expr(value))
@@ -303,6 +314,7 @@ class Evaluator:
     def _eval_while(self, cond, body):
         while self._eval_expr(cond):
             try: self._eval_statement(body)
+            except Continue: continue
             except Break: break
 
     def _eval_print(self, expr):
@@ -353,9 +365,11 @@ class Evaluator:
         value = 0
         try:
             self._eval_statement(body)
-        except Return as ret:
-            value = ret.value
-        self._env = parent_env
+        except Break: assert False, "Break outside loop."
+        except Continue: assert False, "Continue outside loop."
+        except Return as ret: value = ret.value
+        finally:
+            self._env = parent_env
         return value
 
     def _eval_variable(self, name):

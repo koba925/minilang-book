@@ -451,6 +451,20 @@ class TestMinilang(unittest.TestCase):
                                     print 10;
                                     """), [5, 6, 7, 10])
         self.assertEqual(get_error("break;"), "Break at top level.")
+        self.assertEqual(get_error("func() { break; }();"), "Break outside loop.")
+
+    def test_continue(self):
+        self.assertEqual(get_output("""
+                                    var n = 5;
+                                    while n < 8 {
+                                        set n = n + 1;
+                                        if n = 7 { continue; }
+                                        print n;
+                                    }
+                                    print 10;
+                                    """), [6, 8, 10])
+        self.assertEqual(get_error("continue;"), "Continue at top level.")
+        self.assertEqual(get_error("func() { continue; } ();"), "Continue outside loop.")
 
 if __name__ == "__main__":
     unittest.main()
