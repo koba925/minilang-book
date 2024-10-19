@@ -471,5 +471,19 @@ class TestMinilang(unittest.TestCase):
         self.assertEqual(get_output("print null = null;"), ["true"])
         self.assertEqual(get_output("print null = 0;"), ["false"])
 
+    def test_array(self):
+        self.assertEqual(get_output("print [];"), ["[]"])
+        self.assertEqual(get_output("print [1, true, false, less, func () {}, null, []];"),
+                         ["[1, true, false, <builtin>, <func>, null, []]"])
+        self.assertEqual(get_output("var a = [1, 2]; print a;"), ["[1, 2]"])
+        self.assertEqual(get_output("print [] = [];"), ["true"])
+        self.assertEqual(get_output("print [] # [];"), ["false"])
+        self.assertEqual(get_output("print [5, 6] = [5, 6];"), ["true"])
+        self.assertEqual(get_output("print [5, 6] # [5, 6];"), ["false"])
+        self.assertEqual(get_output("print [5, 6] = [5, 7];"), ["false"])
+        self.assertEqual(get_output("print [5, 6] # [5, 7];"), ["true"])
+        self.assertEqual(get_output("print [5, 6] = [5];"), ["false"])
+        self.assertEqual(get_output("print [5, 6] # [5];"), ["true"])
+
 if __name__ == "__main__":
     unittest.main()
