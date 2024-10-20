@@ -356,10 +356,10 @@ class Evaluator:
             case ["func", param, body]: return ["func", param, body, self._env]
             case ["^", a, b]: return self._eval_expr(a) ** self._eval_expr(b)
             case ["-", a]: return -self._eval_expr(a)
-            case ["*", a, b]: return self._eval_expr(a) * self._eval_expr(b)
+            case ["*", a, b]: return self._eval_mul(self._eval_expr(a), self._eval_expr(b))
             case ["/", a, b]: return self._safe_div_mod(operator.floordiv, self._eval_expr(a), self._eval_expr(b))
             case ["%", a, b]: return self._safe_div_mod(operator.mod, self._eval_expr(a), self._eval_expr(b))
-            case ["+", a, b]: return self._eval_expr(a) + self._eval_expr(b)
+            case ["+", a, b]: return self._eval_plus(self._eval_expr(a), self._eval_expr(b))
             case ["-", a, b]: return self._eval_expr(a) - self._eval_expr(b)
             case ["<", a, b]: return self._eval_expr(a) < self._eval_expr(b)
             case [">", a, b]: return self._eval_expr(a) > self._eval_expr(b)
@@ -372,6 +372,18 @@ class Evaluator:
                 return self._apply(self._eval_expr(func),
                                    [self._eval_expr(arg) for arg in args])
             case unexpected: assert False, f"Internal Error at `{unexpected}`."
+
+    def _eval_mul(self, a, b):
+        match [a, b]:
+            case [["arr", values], int(times)]:
+                return ["arr", values * times]
+        return a * b
+
+    def _eval_plus(self, a, b):
+        match [a, b]:
+            case [["arr", values_a], ["arr", values_b]]:
+                return ["arr", values_a + values_b]
+        return a + b
 
     def _safe_div_mod(self, op, a, b):
         assert b != 0, f"Division by zero."
