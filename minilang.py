@@ -327,10 +327,11 @@ class Evaluator:
     def _to_print(self, value):
         match value:
             case bool(b): return "true" if b else "false"
+            case int(i): return str(i)
             case None: return "null"
             case v if callable(v): return "<builtin>"
             case ["func", *_]: return "<func>"
-            case _: return value
+            case unexpected: assert False, f"`{unexpected}` unexpected in `_to_print`."
 
     def _eval_expr(self, expr):
         match expr:
