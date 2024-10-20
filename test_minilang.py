@@ -473,6 +473,7 @@ class TestMinilang(unittest.TestCase):
 
     def test_array(self):
         self.assertEqual(get_output("print [];"), ["[]"])
+        self.assertEqual(get_output("print [1 + 2, 3 * 4];"), ["[3, 12]"])
         self.assertEqual(get_output("print [1, true, false, less, func () {}, null, []];"),
                          ["[1, true, false, <builtin>, <func>, null, []]"])
         self.assertEqual(get_output("var a = [1, 2]; print a;"), ["[1, 2]"])
@@ -488,6 +489,13 @@ class TestMinilang(unittest.TestCase):
 
         self.assertEqual(get_output("print [5, 6] + [7, 8];"), ["[5, 6, 7, 8]"])
         self.assertEqual(get_output("print [5, 6] * 3;"), ["[5, 6, 5, 6, 5, 6]"])
+
+        self.assertEqual(get_output("print [5, 6, 7, 8][0];"), ["5"])
+        self.assertEqual(get_output("print [5, 6, 7, 8][3];"), ["8"])
+        self.assertEqual(get_output("print [[5, 6], [7, 8]][1];"), ["[7, 8]"])
+        self.assertEqual(get_output("print [[5, 6], [7, 8]][1][0];"), ["7"])
+        self.assertEqual(get_output("print func(){ return [5, 6, 7, 8]; }()[0];"), ["5"])
+        self.assertEqual(get_output("print [func(i){ return [5, 6, 7, 8][i]; }][0](3);"), ["8"])
 
 if __name__ == "__main__":
     unittest.main()

@@ -162,23 +162,27 @@ class Parser:
         return [op, self._parse_unary(ops, sub_element)]
 
     def _parse_power(self):
-        power = self._parse_call()
+        power = self._parse_call_array()
         if self._current_token != "^": return power
         self._next_token()
         return ["^", power, self._parse_power()]
 
-    def _parse_call(self):
-        call = self._parse_primary()
-        while self._current_token == "(":
+    def _parse_call_array(self):
+        def terminator(left):
+            return {"(": ")", "[": "]"}[left]
+
+        result = self._parse_primary()
+        while (left := self._current_token) in ("(", "["):
             self._next_token()
             args = []
-            while self._current_token != ")":
+            while self._current_token != terminator(left):
                 args.append(self._parse_expression())
-                if self._current_token != ")":
+                if self._current_token != terminator(left):
                     self._consume_token(",")
-            call = [call] + args
-            self._consume_token(")")
-        return call
+            if left == "(": result = [result] + args
+            else: result = ["index", result, args[0]]
+            self._consume_token(terminator(left))
+        return result
 
     def _parse_primary(self):
         match self._current_token:
@@ -352,6 +356,8 @@ class Evaluator:
             case None: return None
             case ["arr", exprs]:
                 return ["arr", [self._eval_expr(expr) for expr in exprs]]
+            case ["index", expr, index]:
+                return self._eval_index(self._eval_expr(expr), self._eval_expr(index))
             case str(name): return self._eval_variable(name)
             case ["func", param, body]: return ["func", param, body, self._env]
             case ["^", a, b]: return self._eval_expr(a) ** self._eval_expr(b)
@@ -372,6 +378,13 @@ class Evaluator:
                 return self._apply(self._eval_expr(func),
                                    [self._eval_expr(arg) for arg in args])
             case unexpected: assert False, f"Internal Error at `{unexpected}`."
+
+    def _eval_index(self, array, index):
+        match array:
+            case ["arr", value]:
+                return value[index]
+            case _:
+                assert False, "Index must be applied to an array."
 
     def _eval_mul(self, a, b):
         match [a, b]:
