@@ -73,12 +73,17 @@ class Parser:
     def _parse_var_set(self):
         op = self._current_token
         self._next_token()
-        name = self._parse_primary()
-        assert isinstance(name, str),  f"Expected a name, found `{name}`."
+        target = self._parse_primary()
+        assert isinstance(target, str),  f"Expected a name, found `{target}`."
+        while self._current_token == "[":
+            self._next_token()
+            index = self._parse_expression()
+            target = ["index", target, index]
+            self._consume_token("]")
         self._consume_token("=")
         value = self._parse_expression()
         self._consume_token(";")
-        return [op, name, value]
+        return [op, target, value]
 
     def _parse_if(self):
         self._next_token()
@@ -168,20 +173,19 @@ class Parser:
         return ["^", power, self._parse_power()]
 
     def _parse_call_array(self):
-        def terminator(left):
-            return {"(": ")", "[": "]"}[left]
+        parens = {"(": ")", "[": "]"}
 
         result = self._parse_primary()
-        while (left := self._current_token) in ("(", "["):
+        while (left := self._current_token) in parens:
             self._next_token()
             args = []
-            while self._current_token != terminator(left):
+            while self._current_token != parens[left]:
                 args.append(self._parse_expression())
-                if self._current_token != terminator(left):
+                if self._current_token != parens[left]:
                     self._consume_token(",")
             if left == "(": result = [result] + args
             else: result = ["index", result, args[0]]
-            self._consume_token(terminator(left))
+            self._consume_token(parens[left])
         return result
 
     def _parse_primary(self):
@@ -318,11 +322,20 @@ class Evaluator:
         finally:
             self._env = parent_env
 
-    def _eval_var(self, name, value):
-        self._env.define(name, self._eval_expr(value))
+    def _eval_var(self, target, value):
+        self._env.define(target, self._eval_expr(value))
 
-    def _eval_set(self, name, value):
-        self._env.assign(name, self._eval_expr(value))
+    def _eval_set(self, target, value):
+        match target:
+            case ["index", expr, index]:
+                match [self._eval_expr(expr), self._eval_expr(index)]:
+                    case [["arr", values], int(i)]:
+                        values[i] = self._eval_expr(value)
+                        return
+            case str(name):
+                self._env.assign(target, self._eval_expr(value))
+                return
+        assert False, f"Illegal assignment."
 
     def _eval_if(self, cond, conseq, alt):
         if self._eval_expr(cond):

@@ -101,7 +101,7 @@ class TestMinilang(unittest.TestCase):
         self.assertEqual(get_error("var 1 = 1;"), "Expected a name, found `1`.")
         self.assertEqual(get_error("var a = 1; var a = 1;"), "`a` already defined.")
         self.assertEqual(get_error("set a;"), "Expected `=`, found `;`.")
-        self.assertEqual(get_error("set 1 = 1;"), "Expected a name, found `1`.")
+        self.assertEqual(get_error("set a + 1 = 1;"), "Expected `=`, found `+`.")
         self.assertEqual(get_error("set a = 1;"), "`a` not defined.")
         self.assertEqual(get_error("print a;"), "`a` not defined.")
 
@@ -496,6 +496,10 @@ class TestMinilang(unittest.TestCase):
         self.assertEqual(get_output("print [[5, 6], [7, 8]][1][0];"), ["7"])
         self.assertEqual(get_output("print func(){ return [5, 6, 7, 8]; }()[0];"), ["5"])
         self.assertEqual(get_output("print [func(i){ return [5, 6, 7, 8][i]; }][0](3);"), ["8"])
+
+        self.assertEqual(get_output("var a = [5, 6, 7]; set a[1] = 8; print a;"), ["[5, 8, 7]"])
+        self.assertEqual(get_output("var a = [[5, 6], [7, 8]]; set a[1][0] = 9; print a;"), ["[[5, 6], [9, 8]]"])
+        self.assertEqual(get_error("set 3[1] = 1;"), "Expected a name, found `3`.")
 
 if __name__ == "__main__":
     unittest.main()
