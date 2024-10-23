@@ -501,5 +501,49 @@ class TestMinilang(unittest.TestCase):
         self.assertEqual(get_output("var a = [[5, 6], [7, 8]]; set a[1][0] = 9; print a;"), ["[[5, 6], [9, 8]]"])
         self.assertEqual(get_error("set 3[1] = 1;"), "Expected a name, found `3`.")
 
+        self.assertEqual(get_output("var a = [5, 6]; push(a, 7); print a;"), ["[5, 6, 7]"])
+        self.assertEqual(get_output("var a = [5, 6, 7]; print pop(a); print a;"), ["7", "[5, 6]"])
+        self.assertEqual(get_output("print len([5, 6, 7]);"), ["3"])
+
+    def test_insertion_sort(self):
+        self.assertEqual(get_output("""
+                                    var a = [3, 7, 6, 4, 9, 2];
+                                    var i = 0;
+                                    while i < len(a) {
+                                        var v = a[i];
+                                        var j = i;
+                                        while 0 < j {
+                                            if v < a[j - 1] {
+                                                set a[j] = a[j - 1];
+                                            } else {
+                                                break;
+                                            }
+                                            set j = j - 1;
+                                        }
+                                        set a[j] = v;
+                                        set i = i + 1;
+                                    }
+                                    print a;
+                                    """), ["[2, 3, 4, 6, 7, 9]"])
+
+    def test_primes(self):
+        self.assertEqual(get_output("""
+                                    var N = 10;
+                                    var is_prime = [false, false] + [true] * (N - 2);
+                                    var i = 2;
+                                    while i * i < N {
+                                        if is_prime[i] {
+                                            var j = i + i;
+                                            while j < N { set is_prime[j] = false; set j = j + i; }
+                                        }
+                                        set i = i + 1;
+                                    }
+                                    set i = 2;
+                                    while i < N {
+                                        if is_prime[i] { print i; }
+                                        set i = i + 1;
+                                    }
+                                    """), ["2", "3", "5", "7"])
+
 if __name__ == "__main__":
     unittest.main()

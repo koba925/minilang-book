@@ -282,6 +282,9 @@ class Evaluator:
         self._env = Environment()
         self._env.define("less", lambda a, b: a < b)
         self._env.define("print_env", self._print_env)
+        self._env.define("push", lambda a, v: a[1].append(v))
+        self._env.define("pop", lambda a: a[1].pop())
+        self._env.define("len", lambda a: len(a[1]))
 
     def _print_env(self):
         for values in self._env.list():
