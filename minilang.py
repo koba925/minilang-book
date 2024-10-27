@@ -55,6 +55,7 @@ class Parser:
             case "var" | "set": return self._parse_var_set()
             case "if": return self._parse_if()
             case "while": return self._parse_while()
+            case "for": return self._parse_for()
             case "break": return self._parse_break()
             case "continue": return self._parse_continue()
             case "def": return self._parse_def()
@@ -105,6 +106,16 @@ class Parser:
         self._check_token("{")
         body = self._parse_block()
         return ["while", cond, body]
+
+    def _parse_for(self):
+        self._next_token()
+        var = self._parse_primary()
+        assert isinstance(var, str),  f"Expected a name, found `{var}`."
+        self._consume_token("in")
+        array = self._parse_expression()
+        self._check_token("{")
+        body = self._parse_block()
+        return ["for", var, array, body]
 
     def _parse_break(self):
         self._next_token()
@@ -309,6 +320,7 @@ class Evaluator:
             case ["set", name, value]: self._eval_set(name, value)
             case ["if", cond, conseq, alt]: self._eval_if(cond, conseq, alt)
             case ["while", cond, body]: self._eval_while(cond, body)
+            case ["for", var, array, body]: self._eval_for(var, array, body)
             case ["break"]: raise Break()
             case ["continue"]: raise Continue()
             case ["return", value]: raise Return(self._eval_expr(value))
@@ -351,6 +363,17 @@ class Evaluator:
             try: self._eval_statement(body)
             except Continue: continue
             except Break: break
+
+    def _eval_for(self, var, array, body):
+        parent_env = self._env
+        self._env = Environment(parent_env)
+        self._env.define(var, None)
+        for val in self._eval_expr(array)[1]:
+            self._env.assign(var, val)
+            try: self._eval_statement(body)
+            except Continue: continue
+            except Break: break
+        self._env = parent_env
 
     def _eval_print(self, expr):
         self.output.append(self._to_print(self._eval_expr(expr)))

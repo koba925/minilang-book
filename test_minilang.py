@@ -545,5 +545,61 @@ class TestMinilang(unittest.TestCase):
                                     }
                                     """), ["2", "3", "5", "7"])
 
+    def test_for_in(self):
+        self.assertEqual(get_output("for i in [5, 6, 7] { print i; }"), ["5", "6", "7"])
+        self.assertEqual(get_output("""
+                                    for i in [5, 6, 7] { if i = 6 { break; } print i; }
+                                    """), ["5"])
+        self.assertEqual(get_output("""
+                                    for i in [5, 6, 7] { if i = 6 { continue; } print i; }
+                                    """), ["5", "7"])
+
+    def test_range(self):
+        self.assertEqual(get_output("""
+                                    def range(start, end) {
+                                        var result = []; var i = start;
+                                        while i < end { push(result, i); set i = i + 1; }
+                                        return result;
+                                    }
+
+                                    var sum = 0;
+                                    for i in range(1, 10) { set sum = sum + i; }
+                                    print sum;
+                                    """), ["45"])
+
+    def test_functional(self):
+        self.assertEqual(get_output("""
+                                    def map(array, f) {
+                                        var result = [];
+                                        for e in array { push(result, f(e)); }
+                                        return result;
+                                    }
+
+                                    def filter(array, f) {
+                                        var result = [];
+                                        for e in array { if f(e) { push(result, e); } }
+                                        return result;
+                                    }
+
+                                    def reduce(array, f, init) {
+                                        var result = init;
+                                        for e in array { set result = f(result, e); }
+                                        return result;
+                                    }
+
+                                    print
+                                        reduce(
+                                            map(
+                                                filter(
+                                                    [5, 2, 3, 9, 6],
+                                                    func (e) { return e % 2 = 1; }
+                                                ),
+                                                func (e) { return e * 2; }
+                                            ),
+                                            func (acc, e) { return acc + e; },
+                                            0
+                                        );
+                                    """), ["34"])
+
 if __name__ == "__main__":
     unittest.main()
