@@ -27,6 +27,12 @@ class Scanner:
                 while self._current_char() != "\n":
                     self._current_position += 1
                 return self.next_token()
+            case "'":
+                self._current_position += 1
+                while self._current_char() != "'":
+                    self._current_position += 1
+                self._current_position += 1
+                return ["str", self._source[start + 1:self._current_position - 1]]
             case _:
                 self._current_position += 1
                 return self._source[start:self._current_position]
@@ -112,10 +118,10 @@ class Parser:
         var = self._parse_primary()
         assert isinstance(var, str),  f"Expected a name, found `{var}`."
         self._consume_token("in")
-        array = self._parse_expression()
+        seq = self._parse_expression()
         self._check_token("{")
         body = self._parse_block()
-        return ["for", var, array, body]
+        return ["for", var, seq, body]
 
     def _parse_break(self):
         self._next_token()
@@ -178,16 +184,16 @@ class Parser:
         return [op, self._parse_unary(ops, sub_element)]
 
     def _parse_power(self):
-        power = self._parse_call_array()
+        power = self._parse_call_index()
         if self._current_token != "^": return power
         self._next_token()
         return ["^", power, self._parse_power()]
 
-    def _parse_call_array(self):
+    def _parse_call_index(self):
         parens = {"(": ")", "[": "]"}
 
         result = self._parse_primary()
-        while (left := self._current_token) in parens:
+        while isinstance((left := self._current_token), str) and left in parens:
             self._next_token()
             args = []
             while self._current_token != parens[left]:
@@ -211,6 +217,9 @@ class Parser:
             case int(value) | bool(value) | str(value):
                 self._next_token()
                 return value
+            case ["str", s]:
+                self._next_token()
+                return ["str", s]
             case None:
                 self._next_token()
                 return None
@@ -295,7 +304,8 @@ class Evaluator:
         self._env.define("print_env", self._print_env)
         self._env.define("push", lambda a, v: a[1].append(v))
         self._env.define("pop", lambda a: a[1].pop())
-        self._env.define("len", lambda a: len(a[1]))
+        self._env.define("len", lambda a: len(a) if isinstance(a, str) else len(a[1]))
+        self._env.define("to_print", lambda a: self._to_print(a))
 
     def _print_env(self):
         for values in self._env.list():
@@ -320,7 +330,7 @@ class Evaluator:
             case ["set", name, value]: self._eval_set(name, value)
             case ["if", cond, conseq, alt]: self._eval_if(cond, conseq, alt)
             case ["while", cond, body]: self._eval_while(cond, body)
-            case ["for", var, array, body]: self._eval_for(var, array, body)
+            case ["for", var, seq, body]: self._eval_for(var, seq, body)
             case ["break"]: raise Break()
             case ["continue"]: raise Continue()
             case ["return", value]: raise Return(self._eval_expr(value))
@@ -364,15 +374,17 @@ class Evaluator:
             except Continue: continue
             except Break: break
 
-    def _eval_for(self, var, array, body):
+    def _eval_for(self, var, seq, body):
         parent_env = self._env
         self._env = Environment(parent_env)
         self._env.define(var, None)
-        for val in self._eval_expr(array)[1]:
-            self._env.assign(var, val)
-            try: self._eval_statement(body)
-            except Continue: continue
-            except Break: break
+        match self._eval_expr(seq):
+            case ["arr", seq] | str(seq):
+                for val in seq:
+                    self._env.assign(var, val)
+                    try: self._eval_statement(body)
+                    except Continue: continue
+                    except Break: break
         self._env = parent_env
 
     def _eval_print(self, expr):
@@ -382,6 +394,7 @@ class Evaluator:
         match value:
             case bool(b): return "true" if b else "false"
             case int(i): return str(i)
+            case str(s): return s
             case None: return "null"
             case v if callable(v): return "<builtin>"
             case ["func", *_]: return "<func>"
@@ -393,6 +406,7 @@ class Evaluator:
         match expr:
             case int(value) | bool(value): return value
             case None: return None
+            case ["str", s]: return s
             case ["arr", exprs]:
                 return ["arr", [self._eval_expr(expr) for expr in exprs]]
             case ["index", expr, index]:
@@ -418,12 +432,13 @@ class Evaluator:
                                    [self._eval_expr(arg) for arg in args])
             case unexpected: assert False, f"Internal Error at `{unexpected}`."
 
-    def _eval_index(self, array, index):
-        match array:
-            case ["arr", value]:
+
+    def _eval_index(self, seq, index):
+        match seq:
+            case ["arr", value] | str(value):
                 return value[index]
             case _:
-                assert False, "Index must be applied to an array."
+                assert False, "Index must be applied to an array or a string."
 
     def _eval_mul(self, a, b):
         match [a, b]:

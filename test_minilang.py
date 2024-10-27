@@ -546,7 +546,7 @@ class TestMinilang(unittest.TestCase):
                                     """), ["2", "3", "5", "7"])
 
     def test_for_in(self):
-        self.assertEqual(get_output("for i in [5, 6, 7] { print i; }"), ["5", "6", "7"])
+        self.assertEqual(get_output("for i in [5, [6], 7] { print i; }"), ["5", "[6]", "7"])
         self.assertEqual(get_output("""
                                     for i in [5, 6, 7] { if i = 6 { break; } print i; }
                                     """), ["5"])
@@ -600,6 +600,39 @@ class TestMinilang(unittest.TestCase):
                                             0
                                         );
                                     """), ["34"])
+
+    def test_str(self):
+        self.assertEqual(get_output("print 'hello, world';"), ["hello, world"])
+        self.assertEqual(get_output("print '';"), [""])
+        self.assertEqual(get_output("print 'abc' + 'def';"), ["abcdef"])
+        self.assertEqual(get_output("print 'abc' * 3;"), ["abcabcabc"])
+        self.assertEqual(get_output("print 'abc' = 'abc';"), ["true"])
+        self.assertEqual(get_output("print 'abc' # 'abc';"), ["false"])
+        self.assertEqual(get_output("print 'abc' < 'abd';"), ["true"])
+        self.assertEqual(get_output("print 'abc' > 'abd';"), ["false"])
+
+        self.assertEqual(get_output("print 'abc'[0];"), ["a"])
+
+        self.assertEqual(get_output("print 'abc' + to_print(true);"), ["abctrue"])
+        self.assertEqual(get_output("print 'abc' + to_print(false);"), ["abcfalse"])
+        self.assertEqual(get_output("print 'abc' + to_print(5);"), ["abc5"])
+        self.assertEqual(get_output("print 'abc' + to_print('def');"), ["abcdef"])
+        self.assertEqual(get_output("print 'abc' + to_print(null);"), ["abcnull"])
+        self.assertEqual(get_output("print 'abc' + to_print(less);"), ["abc<builtin>"])
+        self.assertEqual(get_output("print 'abc' + to_print(func(){});"), ["abc<func>"])
+        self.assertEqual(get_output("print 'abc' + to_print([5, 'abc']);"), ["abc[5, abc]"])
+        self.assertEqual(get_output("""print 'line 1
+line 2';"""), ["line 1\nline 2"])
+
+        self.assertEqual(get_output("print len('abc');"), ["3"])
+
+        self.assertEqual(get_output("for c in 'abc' { print c; }"), ["a", "b", "c"])
+        self.assertEqual(get_output("""
+                                    for c in 'abc' { if c = 'b' { break; } print c; }
+                                    """), ["a"])
+        self.assertEqual(get_output("""
+                                    for c in 'abc' { if c = 'b' { continue; } print c; }
+                                    """), ["a", "c"])
 
 if __name__ == "__main__":
     unittest.main()
