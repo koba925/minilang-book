@@ -33,6 +33,11 @@ class Scanner:
                     self._current_position += 1
                 self._current_position += 1
                 return ["str", self._source[start + 1:self._current_position - 1]]
+            case "$":
+                self._current_position += 1
+                if self._current_char() == "[":
+                    self._current_position += 1
+                return self._source[start:self._current_position]
             case _:
                 self._current_position += 1
                 return self._source[start:self._current_position]
@@ -118,10 +123,10 @@ class Parser:
         var = self._parse_primary()
         assert isinstance(var, str),  f"Expected a name, found `{var}`."
         self._consume_token("in")
-        seq = self._parse_expression()
+        col = self._parse_expression()
         self._check_token("{")
         body = self._parse_block()
-        return ["for", var, seq, body]
+        return ["for", var, col, body]
 
     def _parse_break(self):
         self._next_token()
@@ -213,6 +218,7 @@ class Parser:
                 self._consume_token(")")
                 return exp
             case "[": return self._parse_array()
+            case "$[": return self._parse_dic()
             case "func": return self._parse_func()
             case int(value) | bool(value) | str(value):
                 self._next_token()
@@ -234,6 +240,21 @@ class Parser:
                 self._consume_token(",")
         self._consume_token("]")
         return ["arr", array]
+
+    def _parse_dic(self):
+        self._next_token()
+        dic = {}
+        while self._current_token != "]":
+            index = self._current_token
+            assert isinstance(index, str), f"Name expected, found `{index}`."
+            self._next_token()
+            self._consume_token(":")
+            val = self._parse_expression()
+            dic[index] = val
+            if self._current_token != "]":
+                self._consume_token(",")
+        self._consume_token("]")
+        return ["dic", dic]
 
     def _parse_func(self):
         self._next_token()
@@ -305,6 +326,7 @@ class Evaluator:
         self._env.define("push", lambda a, v: a[1].append(v))
         self._env.define("pop", lambda a: a[1].pop())
         self._env.define("len", lambda a: len(a) if isinstance(a, str) else len(a[1]))
+        self._env.define("keys", lambda a: ["arr", list(a[1].keys())])
         self._env.define("to_print", lambda a: self._to_print(a))
 
     def _print_env(self):
@@ -330,7 +352,7 @@ class Evaluator:
             case ["set", name, value]: self._eval_set(name, value)
             case ["if", cond, conseq, alt]: self._eval_if(cond, conseq, alt)
             case ["while", cond, body]: self._eval_while(cond, body)
-            case ["for", var, seq, body]: self._eval_for(var, seq, body)
+            case ["for", var, col, body]: self._eval_for(var, col, body)
             case ["break"]: raise Break()
             case ["continue"]: raise Continue()
             case ["return", value]: raise Return(self._eval_expr(value))
@@ -354,8 +376,8 @@ class Evaluator:
         match target:
             case ["index", expr, index]:
                 match [self._eval_expr(expr), self._eval_expr(index)]:
-                    case [["arr", values], int(i)]:
-                        values[i] = self._eval_expr(value)
+                    case [["arr", values], int(ind)] | [["dic", values], str(ind)]:
+                        values[ind] = self._eval_expr(value)
                         return
             case str(name):
                 self._env.assign(target, self._eval_expr(value))
@@ -374,17 +396,18 @@ class Evaluator:
             except Continue: continue
             except Break: break
 
-    def _eval_for(self, var, seq, body):
+    def _eval_for(self, var, col, body):
         parent_env = self._env
         self._env = Environment(parent_env)
         self._env.define(var, None)
-        match self._eval_expr(seq):
-            case ["arr", seq] | str(seq):
-                for val in seq:
-                    self._env.assign(var, val)
-                    try: self._eval_statement(body)
-                    except Continue: continue
-                    except Break: break
+        match self._eval_expr(col):
+            case ["arr", value] | str(value): col = value
+            case ["dic", value]: col = value.keys()
+        for val in col:
+            self._env.assign(var, val)
+            try: self._eval_statement(body)
+            except Continue: continue
+            except Break: break
         self._env = parent_env
 
     def _eval_print(self, expr):
@@ -400,6 +423,11 @@ class Evaluator:
             case ["func", *_]: return "<func>"
             case ["arr", values]:
                 return "[" + ", ".join([self._to_print(value) for value in values]) + "]"
+            case ["dic", values]:
+                return "$[" + ", ".join([
+                    self._to_print(key) + ": " + self._to_print(values[key])
+                    for key in values
+                ]) + "]"
             case unexpected: assert False, f"`{unexpected}` unexpected in `_to_print`."
 
     def _eval_expr(self, expr):
@@ -409,6 +437,8 @@ class Evaluator:
             case ["str", s]: return s
             case ["arr", exprs]:
                 return ["arr", [self._eval_expr(expr) for expr in exprs]]
+            case ["dic", exprs]:
+                return ["dic", {key: self._eval_expr(exprs[key]) for key in exprs}]
             case ["index", expr, index]:
                 return self._eval_index(self._eval_expr(expr), self._eval_expr(index))
             case str(name): return self._eval_variable(name)
@@ -416,8 +446,8 @@ class Evaluator:
             case ["^", a, b]: return self._eval_expr(a) ** self._eval_expr(b)
             case ["-", a]: return -self._eval_expr(a)
             case ["*", a, b]: return self._eval_mul(self._eval_expr(a), self._eval_expr(b))
-            case ["/", a, b]: return self._safe_div_mod(operator.floordiv, self._eval_expr(a), self._eval_expr(b))
-            case ["%", a, b]: return self._safe_div_mod(operator.mod, self._eval_expr(a), self._eval_expr(b))
+            case ["/", a, b]: return self._div_mod_in(operator.floordiv, self._eval_expr(a), self._eval_expr(b))
+            case ["%", a, b]: return self._div_mod_in(operator.mod, self._eval_expr(a), self._eval_expr(b))
             case ["+", a, b]: return self._eval_plus(self._eval_expr(a), self._eval_expr(b))
             case ["-", a, b]: return self._eval_expr(a) - self._eval_expr(b)
             case ["<", a, b]: return self._eval_expr(a) < self._eval_expr(b)
@@ -433,12 +463,12 @@ class Evaluator:
             case unexpected: assert False, f"Internal Error at `{unexpected}`."
 
 
-    def _eval_index(self, seq, index):
-        match seq:
-            case ["arr", value] | str(value):
-                return value[index]
+    def _eval_index(self, col, index):
+        match col:
+            case ["arr", col] | ["dic", col] | str(col):
+                return col[index]
             case _:
-                assert False, "Index must be applied to an array or a string."
+                assert False, "Index must be applied to an array, a dic or a string."
 
     def _eval_mul(self, a, b):
         match [a, b]:
@@ -452,9 +482,13 @@ class Evaluator:
                 return ["arr", values_a + values_b]
         return a + b
 
-    def _safe_div_mod(self, op, a, b):
-        assert b != 0, f"Division by zero."
-        return op(a, b)
+    def _div_mod_in(self, op, a, b):
+        match b:
+            case ["arr", col] | ["dic", col] | str(col):
+                return a in col
+            case _:
+                assert b != 0, f"Division by zero."
+                return op(a, b)
 
     def _apply(self, func, args):
         if callable(func): return func(*args)

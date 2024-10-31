@@ -505,6 +505,9 @@ class TestMinilang(unittest.TestCase):
         self.assertEqual(get_output("var a = [5, 6, 7]; print pop(a); print a;"), ["7", "[5, 6]"])
         self.assertEqual(get_output("print len([5, 6, 7]);"), ["3"])
 
+        self.assertEqual(get_output("print 5 % [5, 6, 7];"), ["true"])
+        self.assertEqual(get_output("print 8 % [5, 6, 7];"), ["false"])
+
     def test_insertion_sort(self):
         self.assertEqual(get_output("""
                                     var a = [3, 7, 6, 4, 9, 2];
@@ -633,6 +636,24 @@ line 2';"""), ["line 1\nline 2"])
         self.assertEqual(get_output("""
                                     for c in 'abc' { if c = 'b' { continue; } print c; }
                                     """), ["a", "c"])
+
+        self.assertEqual(get_output("print 'a' % 'abc';"), ["true"])
+        self.assertEqual(get_output("print 'd' % 'abc';"), ["false"])
+
+    def test_dic(self):
+        self.assertEqual(get_output("print $[];"), ["$[]"])
+        self.assertEqual(get_output("print $[a: 1 + 2, b: 3 * 4];"), ["$[a: 3, b: 12]"])
+        self.assertEqual(get_error("print $[1: 1];"), "Name expected, found `1`.")
+        self.assertEqual(get_error("print $[a; 1 + 2, b: 3 * 4];"), "Expected `:`, found `;`.")
+        self.assertEqual(get_error("print $[a: 1 + 2; b: 3 * 4];"), "Expected `,`, found `;`.")
+
+        self.assertEqual(get_output("print $[a: 5, b: 6]['a'];"), ["5"])
+
+        self.assertEqual(get_output("print keys($[a: 5, b: 6]);"), ["[a, b]"])
+        self.assertEqual(get_output("print 'a' % $[a: 5, b: 6];"), ["true"])
+        self.assertEqual(get_output("print 'd' % $[a: 5, b: 6];"), ["false"])
+
+        self.assertEqual(get_output("var a = $[a: 5, b: 6]; for k in a { print a[k]; }"), ["5", "6"])
 
 if __name__ == "__main__":
     unittest.main()
