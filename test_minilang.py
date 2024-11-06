@@ -655,5 +655,21 @@ line 2';"""), ["line 1\nline 2"])
 
         self.assertEqual(get_output("var a = $[a: 5, b: 6]; for k in a { print a[k]; }"), ["5", "6"])
 
+    def test_dict_by_dot(self):
+        self.assertEqual(get_output("var a = $[]; set a.abc = 5; print a; print a.abc; print a['abc'];"),
+                                    ["$[abc: 5]", "5", "5"])
+        self.assertEqual(get_output("var a = $[cde: true]; set a.abc = 5; print a;"),
+                                    ["$[cde: true, abc: 5]"])
+        self.assertEqual(get_output("""
+                                    var a = $[]; set a.abc = $[]; set a.abc.cde = 5;
+                                    print a; print a.abc.cde; print a['abc'].cde; print a.abc['cde'];
+                                    """),
+                                    ["$[abc: $[cde: 5]]", "5", "5", "5"])
+        self.assertEqual(get_output("""
+                                    var a = $[]; set a.abc = func(a) { return 2 * a; ); };
+                                    print a; print a.abc; print a.abc(5);
+                                    """),
+                                    ["$[abc: <func>]", "<func>", "10"])
+
 if __name__ == "__main__":
     unittest.main()

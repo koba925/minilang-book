@@ -87,11 +87,16 @@ class Parser:
         self._next_token()
         target = self._parse_primary()
         assert isinstance(target, str),  f"Expected a name, found `{target}`."
-        while self._current_token == "[":
+        while (left := self._current_token) in ("[", "."):
             self._next_token()
-            index = self._parse_expression()
-            target = ["index", target, index]
-            self._consume_token("]")
+            if left == "[":
+                index = self._parse_expression()
+                target = ["index", target, index]
+                self._consume_token("]")
+            else:
+                index = self._current_token
+                target = ["index", target, ["str", str(index)]]
+                self._next_token()
         self._consume_token("=")
         value = self._parse_expression()
         self._consume_token(";")
@@ -195,19 +200,23 @@ class Parser:
         return ["^", power, self._parse_power()]
 
     def _parse_call_index(self):
-        parens = {"(": ")", "[": "]"}
+        parens = {"(": ")", "[": "]", ".": None}
 
         result = self._parse_primary()
         while isinstance((left := self._current_token), str) and left in parens:
             self._next_token()
-            args = []
-            while self._current_token != parens[left]:
-                args.append(self._parse_expression())
-                if self._current_token != parens[left]:
-                    self._consume_token(",")
-            if left == "(": result = [result] + args
-            else: result = ["index", result, args[0]]
-            self._consume_token(parens[left])
+            if left == ".":
+                result = ["index", result, ["str", str(self._current_token)]]
+                self._next_token()
+            else:
+                args = []
+                while self._current_token != parens[left]:
+                    args.append(self._parse_expression())
+                    if self._current_token != parens[left]:
+                        self._consume_token(",")
+                if left == "(": result = [result] + args
+                else: result = ["index", result, args[0]]
+                self._consume_token(parens[left])
         return result
 
     def _parse_primary(self):
