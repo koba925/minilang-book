@@ -95,7 +95,7 @@ class Parser:
                 self._consume_token("]")
             else:
                 index = self._current_token
-                target = ["index", target, ["str", str(index)]]
+                target = ["dot", target, ["str", str(index)]]
                 self._next_token()
         self._consume_token("=")
         value = self._parse_expression()
@@ -194,19 +194,19 @@ class Parser:
         return [op, self._parse_unary(ops, sub_element)]
 
     def _parse_power(self):
-        power = self._parse_call_index()
+        power = self._parse_call_index_dot()
         if self._current_token != "^": return power
         self._next_token()
         return ["^", power, self._parse_power()]
 
-    def _parse_call_index(self):
+    def _parse_call_index_dot(self):
         parens = {"(": ")", "[": "]", ".": None}
 
         result = self._parse_primary()
         while isinstance((left := self._current_token), str) and left in parens:
             self._next_token()
             if left == ".":
-                result = ["index", result, ["str", str(self._current_token)]]
+                result = ["dot", result, ["str", str(self._current_token)]]
                 self._next_token()
             else:
                 args = []
@@ -383,7 +383,7 @@ class Evaluator:
 
     def _eval_set(self, target, value):
         match target:
-            case ["index", expr, index]:
+            case ["index", expr, index] | ["dot", expr, index]:
                 match [self._eval_expr(expr), self._eval_expr(index)]:
                     case [["arr", values], int(ind)] | [["dic", values], str(ind)]:
                         values[ind] = self._eval_expr(value)
@@ -450,6 +450,8 @@ class Evaluator:
                 return ["dic", {key: self._eval_expr(exprs[key]) for key in exprs}]
             case ["index", expr, index]:
                 return self._eval_index(self._eval_expr(expr), self._eval_expr(index))
+            case ["dot", expr, index]:
+                return self._eval_dot(self._eval_expr(expr), self._eval_expr(index))
             case str(name): return self._eval_variable(name)
             case ["func", param, body]: return ["func", param, body, self._env]
             case ["^", a, b]: return self._eval_expr(a) ** self._eval_expr(b)
@@ -478,6 +480,19 @@ class Evaluator:
                 return col[index]
             case _:
                 assert False, "Index must be applied to an array, a dic or a string."
+
+    def _eval_dot(self, seq, index):
+        match seq:
+            case ["dic", seq]:
+                match seq[index]:
+                    case ["func", parameters, body, env]:
+                        env = Environment(env)
+                        env.define(parameters[0], ["dic", seq])
+                        return ["func", parameters[1:], body, env]
+                    case _:
+                        return seq[index]
+            case _:
+                assert False, "Dot must be applied to a dic."
 
     def _eval_mul(self, a, b):
         match [a, b]:

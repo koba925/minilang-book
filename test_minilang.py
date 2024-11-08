@@ -666,10 +666,20 @@ line 2';"""), ["line 1\nline 2"])
                                     """),
                                     ["$[abc: $[cde: 5]]", "5", "5", "5"])
         self.assertEqual(get_output("""
-                                    var a = $[]; set a.abc = func(a) { return 2 * a; ); };
-                                    print a; print a.abc; print a.abc(5);
+                                    var a = $[]; set a.abc = func(a) { return 2 * a; };
+                                    print a; print a.abc; print a['abc'](5);
                                     """),
                                     ["$[abc: <func>]", "<func>", "10"])
+        self.assertEqual(get_output("""
+                                    var a = $[val: 5]; set a.abc = func(this) { return 2 * this.val; };
+                                    print a; print a.abc; print a['abc'](a);
+                                    """),
+                                    ["$[val: 5, abc: <func>]", "<func>", "10"])
+        self.assertEqual(get_output("""
+                                    var a = $[val: 5]; set a.abc = func(this) { return 2 * this.val; };
+                                    print a; print a.abc; print a.abc();
+                                    """),
+                                    ["$[val: 5, abc: <func>]", "<func>", "10"])
 
 if __name__ == "__main__":
     unittest.main()
