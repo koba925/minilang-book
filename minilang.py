@@ -9,7 +9,7 @@ class Scanner:
         start = self._current_position
         match self._current_char():
             case "$EOF": return "$EOF"
-            case c if c.isalpha():
+            case c if c.isalpha() or self._current_char() == "_":
                 while self._current_char().isalnum() or self._current_char() == "_":
                     self._current_position += 1
                 token = self._source[start:self._current_position]
@@ -335,7 +335,7 @@ class Evaluator:
         self._env.define("push", lambda a, v: a[1].append(v))
         self._env.define("pop", lambda a: a[1].pop())
         self._env.define("len", lambda a: len(a) if isinstance(a, str) else len(a[1]))
-        self._env.define("keys", lambda a: ["arr", list(a[1].keys())])
+        self._env.define("keys", lambda a: ["arr", [k for k in a[1].keys() if not k.startswith("__")]])
         self._env.define("to_print", lambda a: self._to_print(a))
 
     def _print_env(self):
@@ -481,16 +481,20 @@ class Evaluator:
             case _:
                 assert False, "Index must be applied to an array, a dic or a string."
 
-    def _eval_dot(self, seq, index):
+    def _eval_dot(self, seq, index, this = None):
+        if this is None: this = seq
         match seq:
-            case ["dic", seq]:
-                match seq[index]:
+            case ["dic", dic]:
+                if index not in dic:
+                    assert "__proto__" in dic, f"`{index}` not in the dic."
+                    return self._eval_dot(dic["__proto__"], index, this)
+                match dic[index]:
                     case ["func", parameters, body, env]:
                         env = Environment(env)
-                        env.define(parameters[0], ["dic", seq])
+                        env.define(parameters[0], this)
                         return ["func", parameters[1:], body, env]
                     case _:
-                        return seq[index]
+                        return dic[index]
             case _:
                 assert False, "Dot must be applied to a dic."
 

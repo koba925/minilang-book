@@ -681,5 +681,49 @@ line 2';"""), ["line 1\nline 2"])
                                     """),
                                     ["$[val: 5, abc: <func>]", "<func>", "10"])
 
+    def test_prototyping(self):
+        self.assertEqual(get_output("""
+                                    var proto = $[val: 5, pr: func(this) { print this.val; }];
+                                    var inh1 = $[__proto__: proto]; inh1.pr();
+                                    var inh2 = $[__proto__: proto, val: 6]; inh2.pr();
+                                    """), ["5", "6"])
+        self.assertEqual(get_output("""
+                                    var Person = $[];
+                                    set Person.introduce = func(this) { print 'I am ' + this.name +'.'; };
+                                    set Person.move_to = func(this, to) { set this.address = to; };
+                                    def new_person(name, address) {
+                                        var this = $[];
+                                        set this.__proto__ = Person;
+                                        set this.name = name;
+                                        set this.address = address;
+                                        return this;
+                                    }
+
+                                    var person1 = new_person('Tom', 'Tokyo');
+                                    person1.introduce();
+                                    print person1.address;
+                                    person1.move_to('Osaka');
+                                    print person1.address;
+
+                                    var Chef = $[];
+                                    set Chef.__proto__ = Person;
+                                    set Chef.cook = func(this) {
+                                        print 'I cooked ' + this.cuisine + ' cuisine.';
+                                    };
+                                    def new_chef(name, address, cuisine) {
+                                        var this = new_person(name, address);
+                                        set this.__proto__ = Chef;
+                                        set this.cuisine = cuisine;
+                                        return this;
+                                    }
+
+                                    var chef1 = new_chef('Jack', 'Paris', 'French');
+                                    chef1.introduce();
+                                    print chef1.address;
+                                    chef1.move_to('London');
+                                    print chef1.address;
+                                    chef1.cook();
+                                    """), ["I am Tom.", "Tokyo", "Osaka", "I am Jack.", "Paris", "London", "I cooked French cuisine."])
+
 if __name__ == "__main__":
     unittest.main()
