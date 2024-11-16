@@ -725,5 +725,117 @@ line 2';"""), ["line 1\nline 2"])
                                     chef1.cook();
                                     """), ["I am Tom.", "Tokyo", "Osaka", "I am Jack.", "Paris", "London", "I cooked French cuisine."])
 
+    def test_ufcs(self):
+        self.assertEqual(get_output("print $[abc: 5, cde: 6].keys();"), ["[abc, cde]"])
+        self.assertEqual(get_output("print [5, 6].pop();"), ["6"])
+        self.assertEqual(get_output("def f(a) { print a * 2; } 5.f();"), ["10"])
+        self.assertEqual(get_output("print $[abc: keys, cde: 6].abc();"), ["[abc, cde]"])
+
+        self.assertEqual(get_error("print $[abc: 5, cde: 6].aaa;"), "`aaa` not defined.")
+        self.assertEqual(get_error("print $[abc: 5, cde: 6].aaa();"), "`aaa` not defined.")
+        self.assertEqual(get_error("print 5.aaa();"), "`aaa` not defined.")
+
+    def test_functional2(self):
+        self.assertEqual(get_output("""
+                                    def reduce(array, f, init) {
+                                        var result = init;
+                                        for e in array { set result = f(result, e); }
+                                        return result;
+                                    }
+
+                                    def map(array, f) {
+                                        return array.reduce(func(acc, e) {
+                                            acc.push(f(e)); return acc;
+                                        }, []);
+                                    }
+
+                                    def filter(array, f) {
+                                        return array.reduce(func(acc, e) {
+                                            if f(e) { acc.push(e); }
+                                            return acc;
+                                        }, []);
+                                    }
+
+                                    print [5, 2, 3, 9, 6]
+                                          .filter(func (e) { return e % 2 = 1; })
+                                          .map(func (e) { return e * 2; })
+                                          .reduce(func (acc, e) { return acc + e; }, 0);
+                                    """), ["34"])
+
+    def test_iterator(self):
+        self.assertEqual(get_output("""
+                                    var Iterator = $[];
+                                    set Iterator.next = func(this) { return null; };
+                                    set Iterator.foreach = func(this, f) {
+                                        var e = null;
+                                        while true {
+                                            set e = this.next();
+                                            if e = null { break; }
+                                            f(e);
+                                        }
+                                    };
+                                    set Iterator.reduce = func(this, f, init) {
+                                        var result = init;
+                                        var e = null;
+                                        while true {
+                                            set e = this.next();
+                                            if e = null { break; }
+                                            set result = f(result, e);
+                                        }
+                                        return result;
+                                    };
+                                    def iterator() {
+                                        return $[];
+                                    }
+
+                                    var Range = $[];
+                                    set Range.__proto__ = Iterator;
+                                    set Range.next = func(this) {
+                                        var result = this._current;
+                                        set this._current = this._current + 1;
+                                        if this._current > this._end { return null; }
+                                        return result;
+                                    };
+                                    def range(start, end) {
+                                        var this = iterator();
+                                        set this.__proto__ = Range;
+                                        set this._current = start;
+                                        set this._end = end;
+                                        return this;
+                                    }
+
+                                    range(3, 6).foreach(func(e) { print e; });
+                                    print range(3, 6).reduce(func(acc, e) { return acc + e; }, 0);
+
+                                    var ListIter = $[];
+                                    set ListIter.__proto__ = Iterator;
+                                    set ListIter.next = func(this) {
+                                        if this._current = null { return null; }
+                                        var ret = this._current.car;
+                                        set this._current = this._current.cdr;
+                                        return ret;
+                                    };
+                                    def list_iter(list) {
+                                        var this = iterator();
+                                        set this.__proto__ = ListIter;
+                                        set this._current = list;
+                                        return this;
+                                    }
+
+                                    var List = $[];
+                                    set List.iter = func(this) { return list_iter(this); };
+                                    def cons(car, cdr) {
+                                        var this = $[];
+                                        set this.__proto__ = List;
+                                        set this.car = car;
+                                        set this.cdr = cdr;
+                                        return this;
+                                    }
+
+                                    var l = cons(3, cons(4, cons(5, null)));
+                                    l.iter().foreach(func(e) { print e; });
+                                    print l.iter().reduce(func(acc, e) { return acc + e; }, 0);
+                                    """), ["3", "4", "5", "12", "3", "4", "5", "12"])
+
 if __name__ == "__main__":
     unittest.main()

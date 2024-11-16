@@ -325,6 +325,7 @@ class Environment:
         return self._parent.list() + [self._values]
 
 import operator
+import functools
 
 class Evaluator:
     def __init__(self):
@@ -450,8 +451,8 @@ class Evaluator:
                 return ["dic", {key: self._eval_expr(exprs[key]) for key in exprs}]
             case ["index", expr, index]:
                 return self._eval_index(self._eval_expr(expr), self._eval_expr(index))
-            case ["dot", expr, index]:
-                return self._eval_dot(self._eval_expr(expr), self._eval_expr(index))
+            case ["dot", left, right]:
+                return self._eval_dot(self._eval_expr(left), self._eval_expr(right))
             case str(name): return self._eval_variable(name)
             case ["func", param, body]: return ["func", param, body, self._env]
             case ["^", a, b]: return self._eval_expr(a) ** self._eval_expr(b)
@@ -473,7 +474,6 @@ class Evaluator:
                                    [self._eval_expr(arg) for arg in args])
             case unexpected: assert False, f"Internal Error at `{unexpected}`."
 
-
     def _eval_index(self, col, index):
         match col:
             case ["arr", col] | ["dic", col] | str(col):
@@ -481,22 +481,28 @@ class Evaluator:
             case _:
                 assert False, "Index must be applied to an array, a dic or a string."
 
-    def _eval_dot(self, seq, index, this = None):
-        if this is None: this = seq
-        match seq:
+    def _eval_dot(self, left, right, this = None):
+        def ufcs(right):
+            match right:
+                case ["func", parameters, body, env]:
+                    env = Environment(env)
+                    env.define(parameters[0], this)
+                    return ["func", parameters[1:], body, env]
+                case builtin if callable(builtin):
+                    return functools.partial(builtin, left)
+                case _:
+                    return right
+
+        if this is None: this = left
+        match left:
             case ["dic", dic]:
-                if index not in dic:
-                    assert "__proto__" in dic, f"`{index}` not in the dic."
-                    return self._eval_dot(dic["__proto__"], index, this)
-                match dic[index]:
-                    case ["func", parameters, body, env]:
-                        env = Environment(env)
-                        env.define(parameters[0], this)
-                        return ["func", parameters[1:], body, env]
-                    case _:
-                        return dic[index]
+                if right not in dic:
+                    if not "__proto__" in dic:
+                        return ufcs(self._env.get(right))
+                    return self._eval_dot(dic["__proto__"], right, this)
+                return ufcs(dic[right])
             case _:
-                assert False, "Dot must be applied to a dic."
+                return ufcs(self._env.get(right))
 
     def _eval_mul(self, a, b):
         match [a, b]:
