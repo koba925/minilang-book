@@ -837,5 +837,15 @@ line 2';"""), ["line 1\nline 2"])
                                     print l.iter().reduce(func(acc, e) { return acc + e; }, 0);
                                     """), ["3", "4", "5", "12", "3", "4", "5", "12"])
 
+    def test_type(self):
+        self.assertEqual(get_output("print type(1);"), ["int"])
+        self.assertEqual(get_output("print type(true);"), ["bool"])
+        self.assertEqual(get_output("print type(false);"), ["bool"])
+        self.assertEqual(get_output("print type('');"), ["str"])
+        self.assertEqual(get_output("print type(type);"), ["builtin"])
+        self.assertEqual(get_output("print type(func() {});"), ["func"])
+        self.assertEqual(get_output("print type([]);"), ["arr"])
+        self.assertEqual(get_output("print type($[]);"), ["dic"])
+
 if __name__ == "__main__":
     unittest.main()

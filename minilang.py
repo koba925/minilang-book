@@ -331,6 +331,7 @@ class Evaluator:
     def __init__(self):
         self.output = []
         self._env = Environment()
+        self._env.define("type", self._type)
         self._env.define("less", lambda a, b: a < b)
         self._env.define("print_env", self._print_env)
         self._env.define("push", lambda a, v: a[1].append(v))
@@ -338,6 +339,18 @@ class Evaluator:
         self._env.define("len", lambda a: len(a) if isinstance(a, str) else len(a[1]))
         self._env.define("keys", lambda a: ["arr", [k for k in a[1].keys() if not k.startswith("__")]])
         self._env.define("to_print", lambda a: self._to_print(a))
+
+    def _type(self, a):
+        match a:
+            case None: return "null"
+            case bool(_): return "bool"
+            case int(_): return "int"
+            case str(_): return "str"
+            case c if callable(c): return "builtin"
+            case ["func", *_]: return "func"
+            case ["arr", *_]: return "arr"
+            case ["dic", *_]: return "dic"
+            case unexpected: assert False, f"`{unexpected}` unexpected in `_type`."
 
     def _print_env(self):
         for values in self._env.list():
