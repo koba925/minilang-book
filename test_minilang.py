@@ -508,6 +508,9 @@ class TestMinilang(unittest.TestCase):
         self.assertEqual(get_output("print 5 % [5, 6, 7];"), ["true"])
         self.assertEqual(get_output("print 8 % [5, 6, 7];"), ["false"])
 
+        self.assertEqual(get_output("print first([5, 6, 7]);"), ["5"])
+        self.assertEqual(get_output("print rest([5, 6, 7]);"), ["[6, 7]"])
+
     def test_insertion_sort(self):
         self.assertEqual(get_output("""
                                     var a = [3, 7, 6, 4, 9, 2];

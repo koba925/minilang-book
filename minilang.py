@@ -336,6 +336,8 @@ class Evaluator:
         self._env.define("print_env", self._print_env)
         self._env.define("push", lambda a, v: a[1].append(v))
         self._env.define("pop", lambda a: a[1].pop())
+        self._env.define("first", lambda a: a[1][0])
+        self._env.define("rest", lambda a: ["arr", a[1][1:]])
         self._env.define("len", lambda a: len(a) if isinstance(a, str) else len(a[1]))
         self._env.define("keys", lambda a: ["arr", [k for k in a[1].keys() if not k.startswith("__")]])
         self._env.define("to_print", lambda a: self._to_print(a))
