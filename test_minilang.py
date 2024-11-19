@@ -853,5 +853,135 @@ line 2';"""), ["line 1\nline 2"])
     def test_error(self):
         self.assertEqual(get_error("error('aaa');"), "aaa")
 
+    def test_eval(self):
+        self.assertEqual(get_output("""
+                                    def new(proto, prop) {
+                                        var this = $[__proto__: proto];
+                                        for k in prop { set this[k] = prop[k]; }
+                                        return this;
+                                    }
+
+                                    var Environment = $[
+                                        define: func(this, name, val) {
+                                          set this._vals[name] = val;
+                                        },
+                                        assign: func(this, name, val) {
+                                            if name % this._vals { set this._vals[name] = val; }
+                                            elif this._parent # null  { this._parent.assign(name, val); }
+                                            else { error(name + ' not defined.'); }
+                                        },
+                                        get: func(this, name) {
+                                            if name % this._vals { return this._vals[name]; }
+                                            elif this._parent # null { return this._parent.get(name); }
+                                            else { error(name + ' not defined.'); }
+                                        }
+                                    ];
+                                    def environment(parent) {
+                                        return new(Environment, $[_parent: parent, _vals: $[]]);
+                                    }
+
+                                    var Evaluator = $[
+                                        eval: func(this, expr) {
+                                            if type(expr) = 'int' or type(expr) = 'bool' { return expr; }
+                                            if type(expr) = 'str' { return this._env.get(expr); }
+
+                                            if expr[0] = 'var' { this._env.define(expr[1], this.eval(expr[2])); return; }
+                                            if expr[0] = 'set' { this._env.assign(expr[1], this.eval(expr[2])); return; }
+                                            if expr[0] = 'if' {
+                                                if this.eval(expr[1]) {
+                                                    return this.eval(expr[2]);
+                                                } else {
+                                                    return this.eval(expr[3]);
+                                                }
+                                            }
+                                            if expr[0] = 'func' { return [first(rest(expr)), rest(rest(expr)), this._env]; }
+
+                                            return this._apply(expr);
+                                        },
+                                        _apply: func(this, expr) {
+                                            var op = this.eval(first(expr));
+                                            var args = []; for a in rest(expr) { push(args, this.eval(a)); }
+                                            if type(op) = 'func' { return op(args); }
+
+                                            var params = op[0]; var body = op[1]; var env = op[2];
+                                            var cur_env = this._env; set this._env = environment(env);
+                                            this._add_args(params, args);
+                                            var ret = null; for expr in body { set ret = this.eval(expr); }
+                                            set this._env = cur_env;
+                                            return ret;
+                                        },
+                                        _add_args: func(this, params, args) {
+                                            if params = [] { return; }
+                                            this._env.define(first(params), first(args));
+                                            this._add_args(rest(params), rest(args));
+                                        }
+                                    ];
+                                    def evaluator() {
+                                        var this = new(Evaluator, $[_env: environment(null)]);
+                                        this._env.define('inc', func(args) { return args[0] + 1; });
+                                        this._env.define('dec', func(args) { return args[0] - 1; });
+                                        this._env.define('zero?', func(args) { return args[0] = 0; });
+                                        return this;
+                                    }
+
+                                    var _ev = evaluator();
+                                    def eval(expr) { return _ev.eval(expr); }
+
+                                    !! test
+
+                                    def test(expr, expected) {
+                                        var actual = eval(expr);
+                                        if actual # expected {
+                                            print 'eval(' + to_print(expr) + ') = ' + to_print(actual) +
+                                                  ', not ' + to_print(expected);
+                                        }
+                                    }
+
+                                    ! test tester
+
+                                    test(5, 6);
+
+                                    ! tests
+
+                                    test(5, 5);
+                                    test(true, true);
+
+                                    test(['inc', 5], 6);
+                                    test(['dec', 5], 4);
+                                    test(['zero?', 0], true);
+                                    test(['zero?', 1], false);
+
+                                    eval(['var', 'a', 8]);
+                                    test('a', 8);
+                                    eval(['set', 'a', ['inc', 'a']]);
+                                    test('a', 9);
+
+                                    test(['if', true, 5, 6], 5);
+                                    test(['if', false, 5, 6], 6);
+
+                                    eval(['var', 'add', ['func', ['a', 'b'],
+                                            ['if', ['zero?', 'b'],
+                                                'a',
+                                                ['add', ['inc', 'a'], ['dec', 'b']]]]]);
+                                    test(['add', 5, 6], 11);
+
+                                    eval(['var', 'make_counter', ['func', [],
+                                            [['func', ['count'],
+                                                ['func', [],
+                                                    ['set', 'count', ['inc', 'count']],
+                                                    'count']],
+                                             0]]]);
+                                    eval(['var', 'c1', ['make_counter']]);
+                                    eval(['var', 'c2', ['make_counter']]);
+                                    test(['c1'], 1);
+                                    test(['c1'], 2);
+                                    test(['c1'], 3);
+                                    test(['c2'], 1);
+                                    test(['c2'], 2);
+                                    test(['c2'], 3);
+                                    """), [
+                                    "eval(5) = 5, not 6"
+                                    ])
+
 if __name__ == "__main__":
     unittest.main()
