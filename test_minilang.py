@@ -850,5 +850,8 @@ line 2';"""), ["line 1\nline 2"])
         self.assertEqual(get_output("print type([]);"), ["arr"])
         self.assertEqual(get_output("print type($[]);"), ["dic"])
 
+    def test_error(self):
+        self.assertEqual(get_error("error('aaa');"), "aaa")
+
 if __name__ == "__main__":
     unittest.main()

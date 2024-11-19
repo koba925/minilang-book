@@ -341,6 +341,9 @@ class Evaluator:
         self._env.define("len", lambda a: len(a) if isinstance(a, str) else len(a[1]))
         self._env.define("keys", lambda a: ["arr", [k for k in a[1].keys() if not k.startswith("__")]])
         self._env.define("to_print", lambda a: self._to_print(a))
+        self._env.define("error", self._error)
+
+    def _error(self, message): assert False, message
 
     def _type(self, a):
         match a:
