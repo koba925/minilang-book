@@ -85,18 +85,7 @@ class Parser:
     def _parse_var_set(self):
         op = self._current_token
         self._next_token()
-        target = self._parse_primary()
-        assert isinstance(target, str),  f"Expected a name, found `{target}`."
-        while (left := self._current_token) in ("[", "."):
-            self._next_token()
-            if left == "[":
-                index = self._parse_expression()
-                target = ["index", target, index]
-                self._consume_token("]")
-            else:
-                index = self._current_token
-                target = ["dot", target, ["str", str(index)]]
-                self._next_token()
+        target = self._parse_call_index_dot()
         self._consume_token("=")
         value = self._parse_expression()
         self._consume_token(";")
@@ -376,8 +365,8 @@ class Evaluator:
     def _eval_statement(self, statement):
         match statement:
             case ["block", *statements]: self._eval_block(statements)
-            case ["var", name, value]: self._eval_var(name, value)
-            case ["set", name, value]: self._eval_set(name, value)
+            case ["var", name, value]: self._eval_var(name, self._eval_expr(value))
+            case ["set", name, value]: self._eval_set(name, self._eval_expr(value))
             case ["if", cond, conseq, alt]: self._eval_if(cond, conseq, alt)
             case ["while", cond, body]: self._eval_while(cond, body)
             case ["for", var, col, body]: self._eval_for(var, col, body)
@@ -398,17 +387,53 @@ class Evaluator:
             self._env = parent_env
 
     def _eval_var(self, target, value):
-        self._env.define(target, self._eval_expr(value))
+        match target:
+            case ["arr", [["-", target]]]:
+                match value:
+                    case ["arr", values]:
+                        self._env.define(target, value)
+                        return
+            case ["arr", targets]:
+                match value:
+                    case ["arr", values]:
+                        if not targets and not values: return
+                        if not targets: assert False, f"Too many values."
+                        target, *rest_targets = targets
+                        if not values: assert False, f"Too many targets."
+                        value, *rest_values = values
+                        if target != "_": self._eval_var(target, value)
+                        self._eval_var(["arr", rest_targets], ["arr", rest_values])
+                        return
+            case str(name):
+                self._env.define(target, value)
+                return
+        assert False, f"Illegal declaration."
 
     def _eval_set(self, target, value):
         match target:
+            case ["arr", [["-", target]]]:
+                match value:
+                    case ["arr", values]:
+                        self._env.assign(target, value)
+                        return
+            case ["arr", targets]:
+                match value:
+                    case ["arr", values]:
+                        if not targets and not values: return
+                        if not targets: assert False, f"Too many values."
+                        target, *rest_targets = targets
+                        if not values: assert False, f"Too many targets."
+                        value, *rest_values = values
+                        if target != "_": self._eval_set(target, value)
+                        self._eval_set(["arr", rest_targets], ["arr", rest_values])
+                        return
             case ["index", expr, index] | ["dot", expr, index]:
                 match [self._eval_expr(expr), self._eval_expr(index)]:
                     case [["arr", values], int(ind)] | [["dic", values], str(ind)]:
-                        values[ind] = self._eval_expr(value)
+                        values[ind] = value
                         return
             case str(name):
-                self._env.assign(target, self._eval_expr(value))
+                self._env.assign(target, value)
                 return
         assert False, f"Illegal assignment."
 

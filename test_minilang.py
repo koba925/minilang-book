@@ -98,7 +98,7 @@ class TestMinilang(unittest.TestCase):
         self.assertEqual(get_output("var aa = 5 + 6; var bb = 7 * 8; print aa + bb;"), ["67"])
         self.assertEqual(get_output("var a = 5; print a; set a = a + 6; print a;"), ["5", "11"])
         self.assertEqual(get_output("var a = true; print a; set a = false; print a;"), ["true", "false"])
-        self.assertEqual(get_error("var 1 = 1;"), "Expected a name, found `1`.")
+        self.assertEqual(get_error("var 1 = 1;"), "Illegal declaration.")
         self.assertEqual(get_error("var a = 1; var a = 1;"), "`a` already defined.")
         self.assertEqual(get_error("set a;"), "Expected `=`, found `;`.")
         self.assertEqual(get_error("set a + 1 = 1;"), "Expected `=`, found `+`.")
@@ -499,7 +499,7 @@ class TestMinilang(unittest.TestCase):
 
         self.assertEqual(get_output("var a = [5, 6, 7]; set a[1] = 8; print a;"), ["[5, 8, 7]"])
         self.assertEqual(get_output("var a = [[5, 6], [7, 8]]; set a[1][0] = 9; print a;"), ["[[5, 6], [9, 8]]"])
-        self.assertEqual(get_error("set 3[1] = 1;"), "Expected a name, found `3`.")
+        self.assertEqual(get_error("set 3[1] = 1;"), "Illegal assignment.")
 
         self.assertEqual(get_output("var a = [5, 6]; push(a, 7); print a;"), ["[5, 6, 7]"])
         self.assertEqual(get_output("var a = [5, 6, 7]; print pop(a); print a;"), ["7", "[5, 6]"])
@@ -853,6 +853,56 @@ line 2';"""), ["line 1\nline 2"])
     def test_error(self):
         self.assertEqual(get_error("error('aaa');"), "aaa")
 
+    def test_destructure_var(self):
+        self.assertEqual(get_output("var [a, b] = [5, 6]; print a; print b;"), ["5", "6"])
+        self.assertEqual(get_output("var [a, b] = [5, [6, 7]]; print a; print b;"), ["5", "[6, 7]"])
+        self.assertEqual(get_output("var [a, [b, c]] = [5, [6, 7]]; print a; print b; print c;"), ["5", "6", "7"])
+        self.assertEqual(get_output("var [a, b] = [[5, 6], 7]; print a; print b;"), ["[5, 6]", "7"])
+        self.assertEqual(get_output("var [[a, b], c] = [[5, 6], 7]; print a; print b; print c;"), ["5", "6", "7"])
+
+        self.assertEqual(get_error("var [a, b] = 5;"), "Illegal declaration.")
+        self.assertEqual(get_error("var [3, b] = [5, 6];"), "Illegal declaration.")
+
+        self.assertEqual(get_output("var [a, _] = [5, 6]; print a; "), ["5"])
+        self.assertEqual(get_output("var [_, b, _] = [5, 6, 7]; print b; "), ["6"])
+
+        self.assertEqual(get_error("var [a, _] = [5, 6]; print _;"), "`_` not defined.")
+        self.assertEqual(get_error("var [a, _, _] = [5, 6];"), "Too many targets.")
+        self.assertEqual(get_error("var [a, _] = [5, 6, 7];"), "Too many values.")
+
+        self.assertEqual(get_output("var [a, -b] = [5]; print a; print b;"), ["5", "[]"])
+        self.assertEqual(get_output("var [a, -b] = [5, 6]; print a; print b;"), ["5", "[6]"])
+        self.assertEqual(get_output("var [a, -b] = [5, 6, 7]; print a; print b;"), ["5", "[6, 7]"])
+
+        self.assertEqual(get_error("var [-a, b] = [5, 6, 7];"), "Illegal declaration.")
+
+    def test_destructure_set(self):
+        self.assertEqual(get_output("var [a, b] = [5, 6]; set [a, b] = [7, 8]; print a; print b;"), ["7", "8"])
+        self.assertEqual(get_output("var [a, b] = [5, 6]; set [a, b] = [b, a]; print a; print b;"), ["6", "5"])
+        self.assertEqual(get_output("var [a, b] = [2, 3]; set [a, b] = [5, [6, 7]]; print a; print b;"), ["5", "[6, 7]"])
+        self.assertEqual(get_output("var [a, b, c] = [2, 3, 4]; set [a, [b, c]] = [5, [6, 7]]; print a; print b; print c;"), ["5", "6", "7"])
+        self.assertEqual(get_output("var [a, b] = [2, 3]; set [a, b] = [[5, 6], 7]; print a; print b;"), ["[5, 6]", "7"])
+        self.assertEqual(get_output("var [a, b, c] = [2, 3, 4]; set [[a, b], c] = [[5, 6], 7]; print a; print b; print c;"), ["5", "6", "7"])
+        self.assertEqual(get_output("var a = $[]; set [a.b, a.c] = [5, 6]; print a;"), ["$[b: 5, c: 6]"])
+
+        self.assertEqual(get_error("var [a, b] = [5, 6]; set [a, b] = 5;"), "Illegal assignment.")
+        self.assertEqual(get_error("var [a, b] = [5, 6]; set [3, b] = [7, 8];"), "Illegal assignment.")
+
+        self.assertEqual(get_output("var a = 5; set [a, _] = [7, 8]; print a; "), ["7"])
+        self.assertEqual(get_output("var b = 4; set [_, b, _] = [5, 6, 7]; print b; "), ["6"])
+        self.assertEqual(get_output("var a = $[]; set [a.b, _] = [5, 6]; print a;"), ["$[b: 5]"])
+
+        self.assertEqual(get_error("var a = 5; set [a, _] = [6, 7]; print _;"), "`_` not defined.")
+        self.assertEqual(get_error("var a = 5; set [a, _, _] = [6, 7];"), "Too many targets.")
+        self.assertEqual(get_error("var a = 5; set [a, _] = [5, 6, 7];"), "Too many values.")
+
+        self.assertEqual(get_output("var [a, b] = [0, 0]; set [a, -b] = [5]; print a; print b;"), ["5", "[]"])
+        self.assertEqual(get_output("var [a, b] = [0, 0]; set [a, -b] = [5, 6]; print a; print b;"), ["5", "[6]"])
+        self.assertEqual(get_output("var [a, b] = [0, 0]; set [a, -b] = [5, 6, 7]; print a; print b;"), ["5", "[6, 7]"])
+
+        self.assertEqual(get_error("var [a, b] = [0, 0]; set [-a, b] = [5, 6, 7];"), "Illegal assignment.")
+
+
     def test_eval(self):
         self.assertEqual(get_output("""
                                     def new(proto, prop) {
@@ -903,7 +953,7 @@ line 2';"""), ["line 1\nline 2"])
                                             var args = []; for a in rest(expr) { push(args, this.eval(a)); }
                                             if type(op) = 'func' { return op(args); }
 
-                                            var params = op[0]; var body = op[1]; var env = op[2];
+                                            var [params, body, env] = op;
                                             var cur_env = this._env; set this._env = environment(env);
                                             this._add_args(params, args);
                                             var ret = null; for expr in body { set ret = this.eval(expr); }
