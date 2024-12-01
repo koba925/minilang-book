@@ -114,13 +114,12 @@ class Parser:
 
     def _parse_for(self):
         self._next_token()
-        var = self._parse_primary()
-        assert isinstance(var, str),  f"Expected a name, found `{var}`."
+        target = self._parse_expression()
         self._consume_token("in")
         col = self._parse_expression()
         self._check_token("{")
         body = self._parse_block()
-        return ["for", var, col, body]
+        return ["for", target, col, body]
 
     def _parse_break(self):
         self._next_token()
@@ -449,15 +448,31 @@ class Evaluator:
             except Continue: continue
             except Break: break
 
-    def _eval_for(self, var, col, body):
+    def _eval_for(self, target, col, body):
+        def define_vars(target):
+            match target:
+                case ["arr", [["-", target]]]:
+                    self._env.define(target, None)
+                    return
+                case ["arr", targets]:
+                    if not targets: return
+                    target, *rest_targets = targets
+                    if target != "_": define_vars(target)
+                    define_vars(["arr", rest_targets])
+                    return
+                case str(name):
+                    self._env.define(name, None)
+                    return
+            assert False, f"Illegal for loop target `{target}`."
+
         parent_env = self._env
         self._env = Environment(parent_env)
-        self._env.define(var, None)
+        define_vars(target)
         match self._eval_expr(col):
             case ["arr", value] | str(value): col = value
             case ["dic", value]: col = value.keys()
-        for val in col:
-            self._env.assign(var, val)
+        for value in col:
+            self._eval_set(target, value)
             try: self._eval_statement(body)
             except Continue: continue
             except Break: break

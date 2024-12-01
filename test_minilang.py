@@ -902,6 +902,11 @@ line 2';"""), ["line 1\nline 2"])
 
         self.assertEqual(get_error("var [a, b] = [0, 0]; set [-a, b] = [5, 6, 7];"), "Illegal assignment.")
 
+    def test_destructure_for(self):
+        self.assertEqual(get_output("for [i, b] in [[1, true], [2, false]] { print [i, b]; }"),
+                         ["[1, true]", "[2, false]"])
+        self.assertEqual(get_output("for [i, -bs] in [[1], [2, true], [3, true, false]] { print [i, bs]; }"),
+                         ["[1, []]", "[2, [true]]", "[3, [true, false]]"])
 
     def test_eval(self):
         self.assertEqual(get_output("""
@@ -909,6 +914,21 @@ line 2';"""), ["line 1\nline 2"])
                                         var this = $[__proto__: proto];
                                         for k in prop { set this[k] = prop[k]; }
                                         return this;
+                                    }
+
+                                    def reduce(array, f, init) {
+                                        var result = init;
+                                        for e in array { set result = f(result, e); }
+                                        return result;
+                                    }
+
+                                    def map(array, f) {
+                                        return array.reduce(func(acc, e) { acc.push(f(e)); return acc; }, []);
+                                    }
+
+                                    def zip(array1, array2) {
+                                        if array1 = [] or array2 = [] { return []; }
+                                        return [[first(array1), first(array2)]] + zip(rest(array1), rest(array2));
                                     }
 
                                     var Environment = $[
@@ -949,22 +969,16 @@ line 2';"""), ["line 1\nline 2"])
                                             return this._apply(expr);
                                         },
                                         _apply: func(this, expr) {
-                                            var op = this.eval(first(expr));
-                                            var args = []; for a in rest(expr) { push(args, this.eval(a)); }
+                                            var [op, -args] = expr.map(this.eval);
                                             if type(op) = 'func' { return op(args); }
 
                                             var [params, body, env] = op;
                                             var cur_env = this._env; set this._env = environment(env);
-                                            this._add_args(params, args);
-                                            var ret = null; for expr in body { set ret = this.eval(expr); }
+                                            for [param, arg] in zip(params, args) { this._env.define(param, arg); }
+                                            var ret = null; body.map(func(expr) { set ret = this.eval(expr); });
                                             set this._env = cur_env;
                                             return ret;
                                         },
-                                        _add_args: func(this, params, args) {
-                                            if params = [] { return; }
-                                            this._env.define(first(params), first(args));
-                                            this._add_args(rest(params), rest(args));
-                                        }
                                     ];
                                     def evaluator() {
                                         var this = new(Evaluator, $[_env: environment(null)]);
