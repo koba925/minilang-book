@@ -65,6 +65,7 @@ class Parser:
             case "{": return self._parse_block()
             case "var" | "set": return self._parse_var_set()
             case "if": return self._parse_if()
+            case "match": return self._parse_match()
             case "while": return self._parse_while()
             case "for": return self._parse_for()
             case "break": return self._parse_break()
@@ -104,6 +105,22 @@ class Parser:
             self._check_token("{")
             alt = self._parse_block()
         return ["if", cond, conseq, alt]
+
+    def _parse_match(self):
+        self._next_token()
+        expr = self._parse_expression()
+        self._consume_token("{")
+        cases = []
+        while self._current_token != "}":
+            cases.append(self._parse_case())
+        self._next_token()
+        return ["match", expr, cases]
+
+    def _parse_case(self):
+        pattern = self._parse_expression()
+        self._check_token("{")
+        block = self._parse_block()
+        return [pattern, block]
 
     def _parse_while(self):
         self._next_token()
@@ -367,6 +384,7 @@ class Evaluator:
             case ["var", name, value]: self._eval_var(name, self._eval_expr(value))
             case ["set", name, value]: self._eval_set(name, self._eval_expr(value))
             case ["if", cond, conseq, alt]: self._eval_if(cond, conseq, alt)
+            case ["match", expr, cases]: self._eval_match(expr, cases)
             case ["while", cond, body]: self._eval_while(cond, body)
             case ["for", var, col, body]: self._eval_for(var, col, body)
             case ["break"]: raise Break()
@@ -441,6 +459,43 @@ class Evaluator:
             self._eval_statement(conseq)
         else:
             self._eval_statement(alt)
+
+    def _eval_match(self, expr, cases):
+        def match(pattern, value):
+            match pattern:
+                case ["or", left, right]:
+                    return match(left, value) or match(right, value)
+                case ["arr", [["-", name]]]:
+                    match value:
+                        case ["arr", _]:
+                            self._env.define(name, value)
+                            return True
+                case ["arr", pats]:
+                    match value:
+                        case ["arr", vals]:
+                            if not pats and not vals: return True
+                            if not pats or not vals: return False
+                            pat, *rest_pats = pats
+                            val, *rest_vals = vals
+                            return ((pat == "_" or match(pat, val)) and
+                                    match(["arr", rest_pats], ["arr", rest_vals]))
+                case int(pat) | bool(pat) | ["str", pat]:
+                    return pat == value
+                case str(name):
+                    if name != "_": self._env.define(name, value)
+                    return True
+            return False
+
+        value = self._eval_expr(expr)
+        for pattern, block in cases:
+            parent_env = self._env
+            self._env = Environment(parent_env)
+            try:
+                if match(pattern, value):
+                    self._eval_statement(block)
+                    return
+            finally:
+                self._env = parent_env
 
     def _eval_while(self, cond, body):
         while self._eval_expr(cond):

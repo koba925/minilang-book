@@ -907,6 +907,35 @@ line 2';"""), ["line 1\nline 2"])
                          ["[1, true]", "[2, false]"])
         self.assertEqual(get_output("for [i, -bs] in [[1], [2, true], [3, true, false]] { print [i, bs]; }"),
                          ["[1, []]", "[2, [true]]", "[3, [true, false]]"])
+    def test_match(self):
+        self.assertEqual(get_output("match 1 + 2 { 3 { print 4; } 5 { print 6; } }"), ["4"])
+        self.assertEqual(get_output("match 5 { 3 { print 4; } 5 { print 6; } }"), ["6"])
+        self.assertEqual(get_output("match 6 { 3 { print 4; } 5 { print 6; } }"), [])
+        self.assertEqual(get_output("match false { true { print 't'; } false { print 'f'; } }"), ["f"])
+        self.assertEqual(get_output("match 'abc' { 'cde' { print 'c'; } 'abc' { print 'a'; } }"), ["a"])
+
+        self.assertEqual(get_output("match 6 { 3 { print 4; } a { print a; } }"), ["6"])
+        self.assertEqual(get_output("match 6 { 3 { print 4; } _ { print 5; } }"), ["5"])
+
+        self.assertEqual(get_output("match [] { [1, 2] { print 4; } [1] { print 5; } [] { print 6; } }"), ["6"])
+        self.assertEqual(get_output("match [1] { [1, 2] { print 4; } [] { print 5; } [1] { print 6; } }"), ["6"])
+        self.assertEqual(get_output("match [1, 2] { [] { print 4; } [1] { print 5; } [1, 2] { print 6; } }"), ["6"])
+        self.assertEqual(get_output("match [1, 2] { 3 { print 4; } [1, a] { print a; } }"), ["2"])
+        self.assertEqual(get_output("match [[1, 2], 3] { [a, b, c] {} [a, [b, c]] {} [[a, b], c] { print [a, b, c]; } }"), ["[1, 2, 3]"])
+        self.assertEqual(get_output("match [1, [2, 3]] { [a, b, c] {} [[a, b], c] {} [a, [b, c]] { print [a, b, c]; } }"), ["[1, 2, 3]"])
+        self.assertEqual(get_output("match [1, 2, 3] { 4 { print 5; } [1, _, _] { print 5; } }"), ["5"])
+
+        self.assertEqual(get_error("match [1, 2, 3] { 4 { print 5; } [1, a, a] { print a; } }"), "`a` already defined.")
+
+        self.assertEqual(get_output("match [1] { 4 { print 5; } [a, -b] { print b; } }"), ["[]"])
+        self.assertEqual(get_output("match [1, 2] { 4 { print 5; } [a, -b] { print b; } }"), ["[2]"])
+        self.assertEqual(get_output("match [1, 2, 3] { 4 { print 5; } [a, -b] { print b; } }"), ["[2, 3]"])
+        self.assertEqual(get_output("match [1, 2, 3] { 4 { print 5; } [a, -b] { print b; } }"), ["[2, 3]"])
+
+        self.assertEqual(get_output("match 3 { 3 or 4 { print 5; } }"), ["5"])
+        self.assertEqual(get_output("match 4 { 3 or 4 { print 5; } }"), ["5"])
+        self.assertEqual(get_output("match 5 { 3 or 4 { print 5; } }"), [])
+
 
     def test_eval(self):
         self.assertEqual(get_output("""
@@ -933,7 +962,7 @@ line 2';"""), ["line 1\nline 2"])
 
                                     var Environment = $[
                                         define: func(this, name, val) {
-                                          set this._vals[name] = val;
+                                            set this._vals[name] = val;
                                         },
                                         assign: func(this, name, val) {
                                             if name % this._vals { set this._vals[name] = val; }
@@ -952,21 +981,23 @@ line 2';"""), ["line 1\nline 2"])
 
                                     var Evaluator = $[
                                         eval: func(this, expr) {
-                                            if type(expr) = 'int' or type(expr) = 'bool' { return expr; }
-                                            if type(expr) = 'str' { return this._env.get(expr); }
-
-                                            if expr[0] = 'var' { this._env.define(expr[1], this.eval(expr[2])); return; }
-                                            if expr[0] = 'set' { this._env.assign(expr[1], this.eval(expr[2])); return; }
-                                            if expr[0] = 'if' {
-                                                if this.eval(expr[1]) {
-                                                    return this.eval(expr[2]);
-                                                } else {
-                                                    return this.eval(expr[3]);
-                                                }
+                                            match type(expr) {
+                                                'int' or 'bool' { return expr; }
+                                                'str' { return this._env.get(expr); }
                                             }
-                                            if expr[0] = 'func' { return [first(rest(expr)), rest(rest(expr)), this._env]; }
-
-                                            return this._apply(expr);
+                                            match expr {
+                                                ['var', name, val] { this._env.define(name, this.eval(val)); return; }
+                                                ['set', name, val] { this._env.assign(name, this.eval(val)); return; }
+                                                ['if', cond, conseq, alt] {
+                                                    if this.eval(cond) {
+                                                        return this.eval(conseq);
+                                                    } else {
+                                                        return this.eval(alt);
+                                                    }
+                                                }
+                                                ['func', params, -body] { return [params, body, this._env]; }
+                                                _ { return this._apply(expr); }
+                                            }
                                         },
                                         _apply: func(this, expr) {
                                             var [op, -args] = expr.map(this.eval);
