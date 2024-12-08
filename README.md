@@ -15,5 +15,6 @@ Zenn書籍[「350行くらいのPythonで作るプログラミング言語実装
 * [minilangに配列と文字列を追加する](https://zenn.dev/kb84tkhr/articles/minilang_array_string)
 * [minilangに辞書とオブジェクト（のような何か）を追加する](https://zenn.dev/kb84tkhr/articles/minilang_dict_object)
 * [70行のminilangでつくる評価器超入門（うそ](https://zenn.dev/kb84tkhr/articles/miniminieval)
+* [minilangに分割代入やパターンマッチを実装する](https://zenn.dev/kb84tkhr/articles/minilang-destructuring-pattern-match)
 
 [minilangの記事一覧 | Zenn](https://zenn.dev/topics/minilang)からも一覧できます。
